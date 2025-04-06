@@ -10,22 +10,9 @@ require('dotenv').config();
 // Initialisation de l'application Express
 const app = express();
 const server = http.createServer(app);
-
-// Configuration des origines CORS autorisées
-const allowedOrigins = [
-  'http://localhost:3000', 
-  'http://127.0.0.1:3000',
-  process.env.CLIENT_URL,
-  'https://organiz-asso-web.onrender.com',
-  'https://organiz-asso.onrender.com'
-].filter(Boolean);
-
-console.log('Origines CORS autorisées:', allowedOrigins);
-
-// Configuration Socket.io avec CORS
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -33,14 +20,7 @@ const io = socketIo(server, {
 
 // Configuration des middlewares
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`Origine CORS refusée: ${origin}`);
-      callback(new Error('Non autorisé par CORS'));
-    }
-  },
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie'],
@@ -57,7 +37,6 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 heures
   }
 }));
@@ -105,15 +84,6 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const forumRoutes = require('./routes/forums');
 const messageRoutes = require('./routes/messages');
-
-// Route de vérification de l'état du serveur
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
-  });
-});
 
 // Utilisation des routes
 app.use('/api/auth', authRoutes);

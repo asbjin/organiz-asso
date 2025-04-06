@@ -1,185 +1,204 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// Créer le contexte d'authentification
 const AuthContext = createContext();
 
+// Hook personnalisé pour utiliser le contexte d'authentification
 export const useAuth = () => useContext(AuthContext);
 
+// Fournisseur du contexte d'authentification
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const [error, setError] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('authToken'));
 
   // Configurer axios pour utiliser le token si disponible
-  const setAuthToken = (token) => {
+  useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
       delete axios.defaults.headers.common['Authorization'];
     }
-  };
+  }, [token]);
 
-  // Vérifier le statut d'authentification au chargement
-  const checkAuthStatus = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      // Vérifier le statut d'authentification avec le serveur
-      const res = await axios.get(`${API_URL}/api/auth/check`, {
-        withCredentials: true,
-        // Ajouter un timeout pour éviter que la requête ne reste en attente indéfiniment
-        timeout: 10000
-      });
-      
-      if (res.data.user) {
-        setCurrentUser(res.data.user);
-        setIsAdmin(res.data.user.role === 'admin');
-        setAuthToken(res.data.token);
-      } else {
-        setCurrentUser(null);
-        setIsAdmin(false);
-        setAuthToken(null);
+  // Vérifier l'état de l'authentification au chargement
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("Erreur lors de la vérification de l'authentification:", err);
-      setCurrentUser(null);
-      setIsAdmin(false);
-      setAuthToken(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+      
+      try {
+        const res = await axios.get('http://localhost:5000/api/auth/check', { 
+          withCredentials: true
+        });
+        
+        if (res.data.isAuthenticated) {
+          setCurrentUser(res.data.user);
+        } else {
+          // Si le serveur dit que nous ne sommes pas authentifiés malgré le token, nettoyer
+          localStorage.removeItem('authToken');
+          setToken(null);
+        }
+      } catch (err) {
+        console.log('Non connecté ou session expirée');
+        localStorage.removeItem('authToken');
+        setToken(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [token]);
 
   // Fonction de connexion
-  const login = async (formData) => {
-    setLoading(true);
-    setError('');
-    
+  const login = async (email, password) => {
     try {
-      // Essayer d'abord avec withCredentials
+      setError(null);
+      
       try {
-        const res = await axios.post(`${API_URL}/api/auth/login`,
-          formData,
+        // Première tentative avec withCredentials
+        console.log('Tentative de connexion avec:', { email });
+        const res = await axios.post('http://localhost:5000/api/auth/login', 
+          { email, password },
           { withCredentials: true }
         );
+        console.log('Réponse du serveur (login):', res.data);
+        
+        // Stocker le token dans le localStorage et dans l'état
+        if (res.data.token) {
+          localStorage.setItem('authToken', res.data.token);
+          setToken(res.data.token);
+        }
         
         setCurrentUser(res.data.user);
-        setIsAdmin(res.data.user.role === 'admin');
-        setAuthToken(res.data.token);
-        localStorage.setItem('authInitialized', 'true');
         return res.data;
-      } catch (err) {
+      } catch (initialError) {
+        console.log('Première tentative de connexion échouée, nouvelle tentative sans withCredentials');
+        
         // Si la première tentative échoue, essayer sans withCredentials
         const res = await axios.post(
-          `${API_URL}/api/auth/login`,
-          formData
+          'http://localhost:5000/api/auth/login', 
+          { email, password }
         );
+        console.log('Réponse du serveur (login sans withCredentials):', res.data);
+        
+        // Stocker le token dans le localStorage et dans l'état
+        if (res.data.token) {
+          localStorage.setItem('authToken', res.data.token);
+          setToken(res.data.token);
+        }
         
         setCurrentUser(res.data.user);
-        setIsAdmin(res.data.user.role === 'admin');
-        setAuthToken(res.data.token);
-        localStorage.setItem('authInitialized', 'true');
         return res.data;
       }
     } catch (err) {
-      const errorMessage = 
-        err.response?.data?.message || 
-        "Erreur lors de la connexion. Veuillez vérifier vos informations.";
+      console.error('Erreur de connexion:', err);
+      let errorMessage;
+      
+      if (err.response) {
+        // La requête a été faite et le serveur a répondu avec un code d'état
+        errorMessage = err.response.data?.message || `Erreur serveur: ${err.response.status}`;
+      } else if (err.request) {
+        // La requête a été faite mais aucune réponse n'a été reçue
+        errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
+      } else {
+        // Une erreur s'est produite lors de la configuration de la requête
+        errorMessage = 'Erreur de configuration de la requête: ' + err.message;
+      }
       
       setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+      throw err;
     }
   };
 
   // Fonction d'inscription
-  const register = async (formData) => {
-    setLoading(true);
-    setError('');
-    
+  const register = async (username, email, password) => {
     try {
-      // Première tentative avec withCredentials
+      console.log('Tentative d\'inscription avec:', { username, email });
+      setError(null);
+      
       try {
+        // Première tentative avec withCredentials
         const res = await axios.post(
-          `${API_URL}/api/auth/register`,
-          formData,
-          { withCredentials: true }
+          'http://localhost:5000/api/auth/register', 
+          { username, email, password },
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
         );
+        console.log('Réponse du serveur:', res.data);
         return res.data;
-      } catch (err) {
+      } catch (initialError) {
+        console.log('Première tentative échouée, nouvelle tentative sans withCredentials');
         // Si la première tentative échoue, essayer sans withCredentials
         const res = await axios.post(
-          `${API_URL}/api/auth/register`,
-          formData
+          'http://localhost:5000/api/auth/register', 
+          { username, email, password },
+          { 
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
         );
+        console.log('Réponse du serveur (sans withCredentials):', res.data);
         return res.data;
       }
     } catch (err) {
-      const errorMessage = 
-        err.response?.data?.message || 
-        "Erreur lors de l'inscription. Veuillez réessayer.";
+      console.error('Erreur d\'inscription:', err);
+      let errorMessage;
+      
+      if (err.response) {
+        // La requête a été faite et le serveur a répondu avec un code d'état
+        errorMessage = err.response.data?.message || `Erreur serveur: ${err.response.status}`;
+      } else if (err.request) {
+        // La requête a été faite mais aucune réponse n'a été reçue
+        errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
+      } else {
+        // Une erreur s'est produite lors de la configuration de la requête
+        errorMessage = 'Erreur de configuration de la requête: ' + err.message;
+      }
       
       setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+      throw err;
     }
   };
 
   // Fonction de déconnexion
   const logout = async () => {
-    setLoading(true);
-    
     try {
-      await axios.post(`${API_URL}/api/auth/logout`, {}, { withCredentials: true });
-      
-      // Nettoyer les données d'utilisateur et le token
+      await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
       setCurrentUser(null);
-      setIsAdmin(false);
-      setAuthToken(null);
-      localStorage.removeItem('authInitialized');
+      localStorage.removeItem('authToken');
+      setToken(null);
     } catch (err) {
-      console.error("Erreur lors de la déconnexion:", err);
-      
-      // Même en cas d'erreur, on nettoie les données côté client
-      setCurrentUser(null);
-      setIsAdmin(false);
-      setAuthToken(null);
-      localStorage.removeItem('authInitialized');
-    } finally {
-      setLoading(false);
+      console.error('Erreur lors de la déconnexion', err);
     }
   };
 
-  useEffect(() => {
-    // Vérifier l'authentification au chargement si le localStorage indique une initialisation
-    const hasAuthBeenInitialized = localStorage.getItem('authInitialized') === 'true';
-    
-    if (hasAuthBeenInitialized) {
-      checkAuthStatus();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  // Valeurs exposées par le contexte
   const value = {
     currentUser,
-    isAdmin,
     loading,
     error,
     login,
     register,
     logout,
-    checkAuthStatus,
+    isAdmin: currentUser?.role === 'admin',
+    isAuthenticated: !!currentUser
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthContext;
