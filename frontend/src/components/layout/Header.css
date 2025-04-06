@@ -1,0 +1,277 @@
+/* Header styles inspirés de Reddit */
+
+/* Variables */
+:root {
+  --header-height: 60px;
+}
+
+/* Header principal */
+.reddit-header {
+  background-color: var(--background-white);
+  height: var(--header-height);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.header-container {
+  height: 100%;
+  padding: 0 16px;
+}
+
+/* Logo et marque */
+.header-brand {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  margin-right: 16px;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  margin-right: 6px;
+}
+
+.brand-text {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-color);
+}
+
+/* Barre de recherche */
+.search-container {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 16px;
+}
+
+.search-input {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  background-color: var(--background-white);
+  box-shadow: 0 0 0 1px var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.search-icon {
+  background-color: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding-left: 12px;
+}
+
+.search-btn {
+  background-color: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding-right: 12px;
+}
+
+/* Navigation */
+.header-nav {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  margin: 0 8px;
+  color: var(--text-color);
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: var(--highlight-color);
+}
+
+.nav-item.active {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.nav-icon {
+  font-size: 18px;
+  margin-right: 4px;
+}
+
+.nav-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Header toggle pour mobile */
+.header-toggle {
+  border: none;
+  padding: 6px;
+  margin-left: 8px;
+  color: var(--text-color);
+}
+
+/* Dropdown de l'utilisateur */
+.user-section {
+  margin-left: 16px;
+}
+
+.user-dropdown {
+  margin-left: auto;
+}
+
+.user-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.username {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+/* Style pour les items de dropdown */
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.dropdown-header {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.user-greeting {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.logout-item {
+  color: var(--secondary-color);
+}
+
+/* Barre de recherche mobile */
+.mobile-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  font-size: 18px;
+  padding: 8px;
+  margin-left: auto;
+}
+
+.mobile-search-bar {
+  position: absolute;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  background-color: var(--background-white);
+  padding: 12px 16px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.2s ease;
+  z-index: 1000;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.search-close {
+  color: var(--text-muted);
+  font-size: 24px;
+  padding: 0 12px;
+}
+
+/* Media queries pour la responsivité */
+@media (max-width: 992px) {
+  .header-nav {
+    padding: 16px 0;
+  }
+  
+  .nav-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+  }
+  
+  .user-section {
+    margin-left: 0;
+    margin-top: 8px;
+    width: 100%;
+  }
+  
+  .user-dropdown {
+    width: 100%;
+  }
+}
+
+/* Ajustement pour les petits écrans */
+@media (max-width: 576px) {
+  .reddit-header {
+    padding: 0 8px;
+  }
+  
+  .header-brand {
+    margin-right: 8px;
+  }
+}
+
+/* Ajustement pour corriger le décalage du header fixed */
+body {
+  padding-top: var(--header-height);
+} 

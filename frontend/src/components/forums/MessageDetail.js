@@ -26,42 +26,27 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
   };
   
   const handleDelete = async () => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
-      try {
-        setDeleting(true);
-        
-        // Appel direct à l'API sans passer par la fonction parente
-        const response = await axios.delete(`http://localhost:5000/api/messages/${reply._id}`, { 
-          withCredentials: true,
-          // Ajouter un timeout plus long pour éviter les problèmes de connexion
-          timeout: 10000
-        });
-        
-        console.log('Réponse de suppression:', response.data);
-        
-        if (response.data.completelyRemoved) {
-          // Si complètement supprimé, informer le parent
-          onDelete(reply._id);
-          alert('Message supprimé avec succès!');
-        } else {
-          // Marquer comme supprimé localement
-          setIsDeleted(true);
-          reply.content = "[Ce message a été supprimé]";
-          reply.isDeleted = true;
-          alert('Message marqué comme supprimé!');
-        }
-      } catch (err) {
-        console.error('Erreur lors de la suppression:', err);
-        alert(`Erreur lors de la suppression du message: ${err.response?.data?.message || err.message}`);
-      } finally {
-        setDeleting(false);
-      }
+    if (deleting) return; // Éviter les multiples clics
+    
+    setDeleting(true);
+    try {
+      await onDelete(reply._id);
+      // Le changement d'état sera géré par la fonction parente
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err);
+      setDeleting(false);
     }
   };
   
   // Déterminer la classe CSS selon le niveau d'imbrication
   const depthClass = `reply-level-${depth % 6}`;
   
+  // Gérer explicitement la modification du champ de saisie
+  const handleReplyContentChange = (e) => {
+    // Mise à jour directe simple sans preventDefault
+    setReplyContent(e.target.value);
+  };
+
   return (
     <div>
       <ListGroup.Item 
@@ -142,7 +127,7 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
                 as="textarea"
                 rows={2}
                 value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
+                onChange={handleReplyContentChange}
                 placeholder="Écrivez votre réponse ici..."
                 required
               />
@@ -197,7 +182,7 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
 const MessageDetail = () => {
   const { id } = useParams();
   const { currentUser } = useAuth();
-  const { joinForum, leaveForum, sendMessage, socket } = useSocket();
+  const { joinForum, leaveForum, sendMessage, socket, connected } = useSocket();
   
   const [message, setMessage] = useState(null);
   const [replies, setReplies] = useState([]);
@@ -274,6 +259,7 @@ const MessageDetail = () => {
     };
   }, [error, loading]);
 
+  // Effet pour charger les données du message
   useEffect(() => {
     let isMounted = true; // Pour éviter les mises à jour sur un composant démonté
     
@@ -299,9 +285,6 @@ const MessageDetail = () => {
               if (!isMounted) return;
               
               setForum(forumRes.data);
-              
-              // Rejoindre le forum via WebSocket
-              joinForum(parentMessageRes.data.forum);
               
               // Récupérer les réponses au message avec structure imbriquée
               const repliesRes = await axios.get(`http://localhost:5000/api/messages/replies/${id}`, { withCredentials: true });
@@ -347,13 +330,26 @@ const MessageDetail = () => {
     // Nettoyer au démontage du composant
     return () => {
       isMounted = false;
-      // Quitter le forum lors du démontage du composant
-      if (message && message.forum) {
+    };
+  }, [id]); // Retrait de message des dépendances pour éviter les boucles
+
+  // Effet séparé pour gérer les connexions WebSocket
+  useEffect(() => {
+    // Rejoindre le forum seulement si socket connecté et message chargé
+    if (socket && connected && message && message.forum) {
+      console.log('Rejoindre le forum via WebSocket:', message.forum);
+      joinForum(message.forum);
+    }
+    
+    // Quitter le forum lors du démontage
+    return () => {
+      if (socket && connected && message && message.forum) {
+        console.log('Quitter le forum via WebSocket:', message.forum);
         leaveForum(message.forum);
       }
     };
-  }, [id, joinForum, leaveForum]); // Retrait de message des dépendances pour éviter les boucles
-  
+  }, [socket, connected, message, joinForum, leaveForum]);
+
   // Écouter les nouveaux messages via WebSocket
   useEffect(() => {
     if (socket && message) {
@@ -405,57 +401,67 @@ const MessageDetail = () => {
     
     if (!newReply.trim() || submitting) return;
     
-    await submitReply(id, newReply);
+    await handleReply(id, newReply);
     setNewReply('');
   };
   
-  // Fonction commune pour soumettre une réponse (au message principal ou à une autre réponse)
-  const submitReply = async (parentId, content) => {
-    if (!content.trim() || submitting) return;
-    
+  // Fonction pour ajouter une réponse
+  const handleReply = async (parentId, content) => {
     try {
       setSubmitting(true);
       
       const res = await axios.post('http://localhost:5000/api/messages', {
-        content: content,
+        content,
         forumId: message.forum,
         parentMessageId: parentId
       }, { withCredentials: true });
       
-      // Mise à jour pour gérer les réponses imbriquées
+      console.log('Réponse ajoutée:', res.data);
+      
+      // Fonction récursive pour mettre à jour une réponse dans l'arborescence
+      const updateRepliesRecursively = (repliesList) => {
+        return repliesList.map(reply => {
+          if (reply._id === parentId) {
+            // Si on trouve la réponse parent, on ajoute la nouvelle réponse à ses enfants
+            return {
+              ...reply,
+              children: [...(reply.children || []), res.data.messageData]
+            };
+          }
+          
+          // Sinon, on continue à chercher dans les enfants
+          if (reply.children && reply.children.length > 0) {
+            return {
+              ...reply,
+              children: updateRepliesRecursively(reply.children)
+            };
+          }
+          
+          return reply;
+        });
+      };
+      
+      // Si la réponse est directement au message parent
       if (parentId === id) {
-        // Si c'est une réponse au message principal
-        setReplies(prevReplies => [...prevReplies, { ...res.data.messageData, children: [] }]);
+        setReplies(prevReplies => [...prevReplies, res.data.messageData]);
       } else {
-        // Si c'est une réponse à une autre réponse
-        const updateRepliesRecursively = (replyList) => {
-          return replyList.map(reply => {
-            if (reply._id === parentId) {
-              // Ajouter la réponse aux enfants
-              return {
-                ...reply,
-                children: [...(reply.children || []), { ...res.data.messageData, children: [] }]
-              };
-            } else if (reply.children && reply.children.length > 0) {
-              // Rechercher dans les enfants
-              return {
-                ...reply,
-                children: updateRepliesRecursively(reply.children)
-              };
-            }
-            return reply;
-          });
-        };
-        
+        // Sinon, mettre à jour l'arborescence des réponses
         setReplies(prevReplies => updateRepliesRecursively(prevReplies));
       }
       
-      // Envoyer la réponse via WebSocket pour une mise à jour en temps réel
+      // Envoyer une version simplifiée de la réponse via WebSocket
+      const replyData = res.data.messageData;
       sendMessage({
-        ...res.data.messageData,
+        _id: replyData._id,
+        content: replyData.content,
+        createdAt: replyData.createdAt,
         forumId: message.forum,
         parentMessage: parentId,
-        children: []
+        author: {
+          _id: replyData.author._id,
+          username: replyData.author.username,
+          profilePicture: replyData.author.profilePicture || ''
+        }
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de l\'envoi de la réponse');
@@ -467,8 +473,14 @@ const MessageDetail = () => {
 
   // Mettre à jour handleDeleteMessage pour réinitialiser l'état à la fin
   const handleDeleteMessage = async (messageId) => {
+    // Vérifier si une suppression est déjà en cours
+    if (deleteOperation.inProgress) {
+      console.log('Une suppression est déjà en cours, ignoré');
+      return;
+    }
+    
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
-      // Réinitialiser l'état si l'utilisateur annule
+      // Réinitialiser l'état de suppression si l'utilisateur annule
       setDeleteOperation({
         inProgress: false,
         clickCount: 0,
@@ -479,88 +491,58 @@ const MessageDetail = () => {
     }
     
     try {
-      setSubmitting(true); // Désactiver le bouton pendant la suppression
-      
-      const response = await axios.delete(`http://localhost:5000/api/messages/${messageId}`, { 
-        withCredentials: true,
-        timeout: 10000 // Timeout plus long pour éviter les problèmes de connexion
+      // Marquer la suppression comme en cours
+      setDeleteOperation({
+        inProgress: true,
+        clickCount: 1,
+        messageId: messageId,
+        lastClickTime: Date.now()
       });
       
-      console.log('Réponse de suppression:', response.data);
+      setSubmitting(true); // Désactiver le bouton pendant la suppression
       
-      // Si c'est le message parent qui est supprimé
+      // Effet visuel immédiat - supprimer la réponse de l'UI avant même la requête API
       if (messageId === id) {
-        if (response.data.completelyRemoved) {
-          // Si complètement supprimé, rediriger vers le forum
-          alert('Message supprimé avec succès! Redirection vers le forum...');
-          window.location.href = `/forum/${message.forum}`;
-          return; // Sortir de la fonction après redirection
-        } else {
-          // Si juste marqué comme supprimé, mettre à jour le message localement
-          setMessage(prev => ({
-            ...prev,
-            content: "[Ce message a été supprimé]",
-            isDeleted: true
-          }));
-          alert('Message marqué comme supprimé.');
-        }
+        // Supprimer le message principal
+        setMessage(prev => ({
+          ...prev,
+          isDeleted: true
+        }));
+        // Redirection immédiate
+        window.location.href = `/forum/${message.forum}`;
+        return; // Sortir de la fonction
       } else {
-        // Pour les réponses, mise à jour récursive pour marquer comme supprimée ou supprimer complètement
-        if (response.data.completelyRemoved) {
-          // Suppression complète, retirer de la liste locale
-          const removeReplyRecursively = (replyList, idToRemove) => {
-            return replyList.filter(reply => {
-              if (reply._id === idToRemove) {
-                return false; // Supprimer cette réponse
-              }
-              if (reply.children && reply.children.length > 0) {
-                reply.children = removeReplyRecursively(reply.children, idToRemove);
-              }
-              return true;
-            });
-          };
-          
-          setReplies(prevReplies => removeReplyRecursively(prevReplies, messageId));
-          alert('Réponse supprimée avec succès!');
-        } else {
-          // Marqué comme supprimé, mettre à jour dans la liste locale
-          const updateReplyRecursively = (replyList, idToUpdate) => {
-            return replyList.map(reply => {
-              if (reply._id === idToUpdate) {
-                // Marquer cette réponse comme supprimée
-                return {
-                  ...reply,
-                  content: "[Ce message a été supprimé]",
-                  isDeleted: true
-                };
-              }
-              if (reply.children && reply.children.length > 0) {
-                reply.children = updateReplyRecursively(reply.children, idToUpdate);
-              }
-              return reply;
-            });
-          };
-          
-          setReplies(prevReplies => updateReplyRecursively(prevReplies, messageId));
-          alert('Message marqué comme supprimé!');
-        }
+        // Pour toutes les réponses, les supprimer immédiatement de l'interface
+        const removeReplyRecursively = (replyList, idToRemove) => {
+          return replyList.filter(reply => {
+            if (reply._id === idToRemove) {
+              return false; // Supprimer cette réponse et toutes ses réponses enfants
+            }
+            if (reply.children && reply.children.length > 0) {
+              reply.children = removeReplyRecursively(reply.children, idToRemove);
+            }
+            return true;
+          });
+        };
+        
+        setReplies(prevReplies => removeReplyRecursively(prevReplies, messageId));
       }
-    } catch (err) {
-      console.error('Erreur lors de la suppression:', err);
       
-      // Si l'API renvoie une erreur, afficher ce message
-      if (err.response && err.response.data) {
-        setError(err.response.data.message || 'Erreur lors de la suppression du message');
-        alert(`Erreur lors de la suppression du message: ${err.response.data.message || 'Erreur serveur'}`);
-      } else if (err.request) {
-        // Si la requête a été envoyée mais qu'il n'y a pas eu de réponse
-        setError('Le serveur n\'a pas répondu. Vérifiez votre connexion.');
-        alert('Le serveur n\'a pas répondu. Vérifiez votre connexion.');
-      } else {
-        // Si une erreur s'est produite lors de la configuration de la requête
-        setError(err.message || 'Erreur lors de la suppression du message');
-        alert(`Erreur: ${err.message}`);
-      }
+      // Ensuite envoyer la requête au serveur (en arrière-plan)
+      axios.delete(`http://localhost:5000/api/messages/${messageId}`, { 
+        withCredentials: true,
+        timeout: 15000 // Timeout plus long pour éviter les problèmes de connexion
+      })
+      .then(response => {
+        console.log('Réponse de suppression:', response.data);
+      })
+      .catch(err => {
+        console.error('Erreur lors de la suppression côté serveur:', err);
+        // Note: on ne revient pas en arrière dans l'UI car l'élément est déjà visuellement supprimé
+      });
+      
+    } catch (err) {
+      console.error('Erreur lors de la suppression côté client:', err);
     } finally {
       setSubmitting(false);
       
@@ -576,8 +558,7 @@ const MessageDetail = () => {
 
   // Fonction pour passer le handleDeleteButtonClick au composant Reply
   const handleReplyDelete = (replyId) => {
-    // Appeler la fonction de gestion des clics multiples
-    handleDeleteButtonClick(replyId);
+    handleDeleteMessage(replyId);
   };
 
   if (loading) {
@@ -736,7 +717,7 @@ const MessageDetail = () => {
                   key={reply._id}
                   reply={reply}
                   onDelete={handleReplyDelete}
-                  onReply={submitReply}
+                  onReply={handleReply}
                   parentId={id}
                   depth={0}
                 />

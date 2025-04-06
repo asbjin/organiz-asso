@@ -1,11 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Container, Spinner } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-// Contextes
-import { AuthProvider } from './contexts/AuthContext';
-import { SocketProvider } from './contexts/SocketContext';
 
 // Composants de mise en page
 import Header from './components/layout/Header';
@@ -38,92 +34,88 @@ const LoadingComponent = () => (
 
 function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <Router>
-          <Header />
-          <Container className="py-4">
-            <Routes>
-              {/* Routes publiques */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              
-              {/* Routes protégées pour les membres */}
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <ForumList />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/forum/:id" 
-                element={
-                  <ProtectedRoute>
-                    <ForumDetail />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/message/:id" 
-                element={
-                  <ProtectedRoute>
-                    <MessageDetail />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile/:id" 
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile/edit" 
-                element={
-                  <ProtectedRoute>
-                    <EditProfile />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Routes protégées pour les administrateurs */}
-              <Route 
-                path="/admin" 
-                element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/pending-users" 
-                element={
-                  <AdminRoute>
-                    <PendingUsers />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/forums" 
-                element={
-                  <AdminRoute>
-                    <ManageForums />
-                  </AdminRoute>
-                } 
-              />
-              
-              {/* Redirection par défaut */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Container>
-          <Footer />
-        </Router>
-      </SocketProvider>
-    </AuthProvider>
+    <>
+      <Header />
+      <Container className="py-4">
+        <Routes>
+          {/* Routes publiques */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Routes protégées pour les membres */}
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <ForumList />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/forum/:id" 
+            element={
+              <ProtectedRoute>
+                <ForumDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/message/:id" 
+            element={
+              <ProtectedRoute>
+                <MessageDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile/:id" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile/edit" 
+            element={
+              <ProtectedRoute>
+                <EditProfile />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Routes protégées pour les administrateurs */}
+          <Route 
+            path="/admin" 
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin/pending-users" 
+            element={
+              <AdminRoute>
+                <PendingUsers />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin/forums" 
+            element={
+              <AdminRoute>
+                <ManageForums />
+              </AdminRoute>
+            } 
+          />
+          
+          {/* Redirection par défaut */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Container>
+      <Footer />
+    </>
   );
 }
 

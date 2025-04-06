@@ -10,6 +10,11 @@ router.get('/forum/:forumId', isAuthenticated, messageController.getForumMessage
 router.get('/replies/:messageId', isAuthenticated, messageController.getMessageReplies);
 router.get('/user/:userId', isAuthenticated, messageController.getUserMessages);
 router.get('/search', isAuthenticated, messageController.searchMessages);
+router.get('/count', isAuthenticated, messageController.countMessages);
+router.get('/forum/:forumId/count', isAuthenticated, messageController.countForumMessages);
+
+// Route pour la suppression en cascade d'un message et ses réponses
+router.delete('/:id/cascade', isAuthenticated, messageController.deleteMessageCascade);
 
 // Route pour obtenir un message spécifique - doit être après les autres routes /quelquechose/:param
 router.get('/:messageId', isAuthenticated, messageController.getMessage);

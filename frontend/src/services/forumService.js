@@ -104,11 +104,34 @@ export const deleteMessage = async (messageId) => {
   }
 };
 
-export default {
+/**
+ * Récupère le nombre de messages dans un forum
+ * @param {string} forumId - ID du forum
+ * @returns {Promise<number>} Nombre de messages dans le forum
+ */
+export const getForumMessageCount = async (forumId) => {
+  try {
+    const response = await axios.get(`${API_URL}/messages/forum/${forumId}/count`, { 
+      withCredentials: true,
+      timeout: 5000 // timeout plus court pour cette opération simple
+    });
+    return response.data.count;
+  } catch (error) {
+    console.error(`Erreur lors de la récupération du nombre de messages du forum ${forumId}:`, error);
+    return 0; // En cas d'erreur, retourner 0 au lieu de planter
+  }
+};
+
+// Créer un objet contenant toutes les fonctions exportées
+const forumService = {
   getForums,
   getForumById,
   getForumMessages,
   createForumMessage,
   replyToMessage,
-  deleteMessage
-}; 
+  deleteMessage,
+  getForumMessageCount
+};
+
+// Exporter l'objet par défaut
+export default forumService; 

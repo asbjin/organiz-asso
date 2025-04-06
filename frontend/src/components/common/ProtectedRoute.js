@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Spinner } from 'react-bootstrap';
 
 const ProtectedRoute = ({ children }) => {
-  const { currentUser, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!currentUser) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
 

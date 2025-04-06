@@ -1,6 +1,10 @@
 import axios from 'axios';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+// Configurer axios globalement
+axios.defaults.withCredentials = true;
+const API_URL = 'http://localhost:5000/api';
+
 // Créer le contexte d'authentification
 const AuthContext = createContext();
 
@@ -14,13 +18,20 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('authToken'));
 
-  // Configurer axios pour utiliser le token si disponible
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  // Fonction pour appliquer le token à axios
+  const applyTokenToAxios = (newToken) => {
+    if (newToken) {
+      console.log('Application du token aux en-têtes axios');
+      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     } else {
+      console.log('Suppression du token des en-têtes axios');
       delete axios.defaults.headers.common['Authorization'];
     }
+  };
+
+  // Configurer axios pour utiliser le token si disponible
+  useEffect(() => {
+    applyTokenToAxios(token);
   }, [token]);
 
   // Vérifier l'état de l'authentification au chargement
@@ -32,21 +43,31 @@ export const AuthProvider = ({ children }) => {
       }
       
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/check', { 
-          withCredentials: true
-        });
+        // S'assurer que le token est appliqué
+        applyTokenToAxios(token);
+        
+        const res = await axios.get(`${API_URL}/auth/check`);
         
         if (res.data.isAuthenticated) {
-          setCurrentUser(res.data.user);
+          // S'assurer que l'utilisateur a un ID accessible à _id
+          const userData = res.data.user;
+          if (userData.id && !userData._id) {
+            userData._id = userData.id;
+          }
+          
+          console.log('Données utilisateur reçues:', userData);
+          setCurrentUser(userData);
         } else {
           // Si le serveur dit que nous ne sommes pas authentifiés malgré le token, nettoyer
           localStorage.removeItem('authToken');
           setToken(null);
+          setCurrentUser(null);
         }
       } catch (err) {
-        console.log('Non connecté ou session expirée');
+        console.log('Non connecté ou session expirée', err);
         localStorage.removeItem('authToken');
         setToken(null);
+        setCurrentUser(null);
       } finally {
         setLoading(false);
       }
@@ -59,43 +80,27 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setError(null);
+      console.log('Tentative de connexion avec:', { email });
       
-      try {
-        // Première tentative avec withCredentials
-        console.log('Tentative de connexion avec:', { email });
-        const res = await axios.post('http://localhost:5000/api/auth/login', 
-          { email, password },
-          { withCredentials: true }
-        );
-        console.log('Réponse du serveur (login):', res.data);
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+      console.log('Réponse du serveur (login):', res.data);
+      
+      // Stocker le token dans le localStorage
+      if (res.data.token) {
+        localStorage.setItem('authToken', res.data.token);
         
-        // Stocker le token dans le localStorage et dans l'état
-        if (res.data.token) {
-          localStorage.setItem('authToken', res.data.token);
-          setToken(res.data.token);
-        }
+        // Appliquer immédiatement le token aux en-têtes
+        applyTokenToAxios(res.data.token);
         
+        // Mettre à jour l'état
+        setToken(res.data.token);
         setCurrentUser(res.data.user);
-        return res.data;
-      } catch (initialError) {
-        console.log('Première tentative de connexion échouée, nouvelle tentative sans withCredentials');
         
-        // Si la première tentative échoue, essayer sans withCredentials
-        const res = await axios.post(
-          'http://localhost:5000/api/auth/login', 
-          { email, password }
-        );
-        console.log('Réponse du serveur (login sans withCredentials):', res.data);
-        
-        // Stocker le token dans le localStorage et dans l'état
-        if (res.data.token) {
-          localStorage.setItem('authToken', res.data.token);
-          setToken(res.data.token);
-        }
-        
-        setCurrentUser(res.data.user);
-        return res.data;
+        // Attendre un court instant pour s'assurer que le token est bien appliqué
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+      
+      return res.data;
     } catch (err) {
       console.error('Erreur de connexion:', err);
       let errorMessage;
@@ -122,35 +127,9 @@ export const AuthProvider = ({ children }) => {
       console.log('Tentative d\'inscription avec:', { username, email });
       setError(null);
       
-      try {
-        // Première tentative avec withCredentials
-        const res = await axios.post(
-          'http://localhost:5000/api/auth/register', 
-          { username, email, password },
-          { 
-            withCredentials: true,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        console.log('Réponse du serveur:', res.data);
-        return res.data;
-      } catch (initialError) {
-        console.log('Première tentative échouée, nouvelle tentative sans withCredentials');
-        // Si la première tentative échoue, essayer sans withCredentials
-        const res = await axios.post(
-          'http://localhost:5000/api/auth/register', 
-          { username, email, password },
-          { 
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        console.log('Réponse du serveur (sans withCredentials):', res.data);
-        return res.data;
-      }
+      const res = await axios.post(`${API_URL}/auth/register`, { username, email, password });
+      console.log('Réponse du serveur:', res.data);
+      return res.data;
     } catch (err) {
       console.error('Erreur d\'inscription:', err);
       let errorMessage;
@@ -174,7 +153,7 @@ export const AuthProvider = ({ children }) => {
   // Fonction de déconnexion
   const logout = async () => {
     try {
-      await axios.post('http://localhost:5000/api/auth/logout', {}, { withCredentials: true });
+      await axios.post(`${API_URL}/auth/logout`, {});
       setCurrentUser(null);
       localStorage.removeItem('authToken');
       setToken(null);
@@ -196,7 +175,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

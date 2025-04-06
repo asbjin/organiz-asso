@@ -1,14 +1,17 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Card, Button, Form, Spinner, Alert, ListGroup } from 'react-bootstrap';
+import { Card, Button, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
+import { BsReply, BsPencil, BsTrash } from 'react-icons/bs';
+import ReplyItem from './ReplyItem';
 
 const ForumDetail = () => {
   const { id } = useParams();
   const { currentUser } = useAuth();
-  const { joinForum, leaveForum, sendMessage, socket } = useSocket();
+  const { joinForum, leaveForum, sendMessage, socket, connected } = useSocket();
   
   const [forum, setForum] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -16,221 +19,386 @@ const ForumDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [deleteOps, setDeleteOps] = useState({});
-
-  useEffect(() => {
-    const fetchForumData = async () => {
-      try {
-        setLoading(true);
-        
-        // Récupérer les détails du forum
-        const forumRes = await axios.get(`http://localhost:5000/api/forums/${id}`, { withCredentials: true });
-        setForum(forumRes.data);
-        
-        // Récupérer les messages du forum
-        const messagesRes = await axios.get(`http://localhost:5000/api/messages/forum/${id}`, { withCredentials: true });
-        setMessages(messagesRes.data);
-        
-        setError('');
-      } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors du chargement du forum');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchForumData();
-    
-    // Rejoindre le forum via WebSocket
-    if (id) {
-      joinForum(id);
-    }
-    
-    // Quitter le forum lors du démontage du composant
-    return () => {
-      if (id) {
-        leaveForum(id);
-      }
-    };
-  }, [id, joinForum, leaveForum]);
+  const [replies, setReplies] = useState({});
+  const [replyForm, setReplyForm] = useState({
+    messageId: null,
+    content: ''
+  });
   
-  // Écouter les nouveaux messages via WebSocket
+  // Définir fetchForumData au niveau global du composant pour pouvoir l'utiliser dans d'autres fonctions
+  const fetchForumData = async () => {
+    try {
+      setLoading(true);
+      
+      // Récupérer les détails du forum
+      const forumRes = await axios.get(`http://localhost:5000/api/forums/${id}`, { withCredentials: true });
+      setForum(forumRes.data);
+      
+      // Récupérer les messages du forum
+      const messagesRes = await axios.get(`http://localhost:5000/api/messages/forum/${id}`, { withCredentials: true });
+      const messagesData = messagesRes.data;
+      
+      // Filtrer les messages avec content "[Ce message a été supprimé]" pour les retirer complètement
+      const filteredMessages = messagesData.filter(message => message.content !== "[Ce message a été supprimé]");
+      setMessages(filteredMessages);
+      
+      // Charger automatiquement les réponses pour tous les messages (non supprimés)
+      if (filteredMessages.length > 0) {
+        filteredMessages.forEach(message => {
+          loadReplies(message._id);
+        });
+      }
+      
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors du chargement du forum');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Chargement initial des données du forum
   useEffect(() => {
-    if (socket) {
+    fetchForumData();
+  }, [id]);
+  
+  // Gestion des WebSockets
+  useEffect(() => {
+    if (socket && connected && id) {
+      console.log('Rejoindre le forum via WebSocket:', id);
+      joinForum(id);
+      
+      // Écouter les nouveaux messages
       const handleNewMessage = (messageData) => {
-        // Vérifier si le message appartient à ce forum
-        if (messageData.forumId === id && messageData.parentMessage === null) {
-          // Ajouter le nouveau message au début de la liste
-          setMessages(prevMessages => [messageData, ...prevMessages]);
+        if (messageData.forumId === id) {
+          // Vérifier si le message existe déjà pour éviter les doublons
+          if (messageData.parentMessage === null) {
+            // C'est un message principal
+            setMessages(prevMessages => {
+              // Vérifier si ce message existe déjà
+              const messageExists = prevMessages.some(m => m._id === messageData._id);
+              if (messageExists) return prevMessages;
+              
+              return [messageData, ...prevMessages];
+            });
+          } else {
+            // C'est une réponse
+            const parentId = messageData.parentMessage;
+            
+            // Si c'est une réponse à un message principal, mettre à jour les réponses
+            setReplies(prev => {
+              if (prev[parentId]) {
+                // Vérifier si cette réponse existe déjà
+                const replyExists = prev[parentId].data && 
+                  prev[parentId].data.some(r => r._id === messageData._id);
+                if (replyExists) return prev;
+                
+                // Ajouter à la liste des réponses existantes
+                return {
+                  ...prev,
+                  [parentId]: {
+                    ...prev[parentId],
+                    data: [...(prev[parentId].data || []), messageData]
+                  }
+                };
+              }
+              return prev;
+            });
+          }
         }
       };
       
-      // S'abonner à l'événement de réception de message
       socket.on('receive_message', handleNewMessage);
       
-      // Se désabonner lors du démontage du composant
       return () => {
+        console.log('Quitter le forum via WebSocket:', id);
+        leaveForum(id);
         socket.off('receive_message', handleNewMessage);
       };
     }
-  }, [socket, id]);
+  }, [id, joinForum, leaveForum, socket, connected]);
 
+  // Charger les réponses pour un message
+  const loadReplies = async (messageId) => {
+    try {
+      // Indiquer que les réponses sont en cours de chargement
+      setReplies(prev => ({
+        ...prev,
+        [messageId]: { 
+          ...prev[messageId],
+          loading: true
+        }
+      }));
+      
+      const res = await axios.get(`http://localhost:5000/api/messages/replies/${messageId}`, { 
+        withCredentials: true 
+      });
+      
+      // Filtrer les réponses supprimées récursivement
+      const filterDeletedReplies = (replies) => {
+        if (!replies) return [];
+        
+        return replies
+          .filter(reply => reply.content !== "[Ce message a été supprimé]")
+          .map(reply => ({
+            ...reply,
+            children: filterDeletedReplies(reply.children)
+          }));
+      };
+      
+      const filteredReplies = filterDeletedReplies(res.data);
+      
+      // Stocker les réponses filtrées une fois chargées
+      setReplies(prev => ({
+        ...prev,
+        [messageId]: { 
+          loading: false, 
+          data: filteredReplies,
+          visible: true
+        }
+      }));
+    } catch (err) {
+      console.error(`Erreur lors du chargement des réponses:`, err);
+      setReplies(prev => ({
+        ...prev,
+        [messageId]: { 
+          loading: false, 
+          data: [], 
+          error: err.message,
+          visible: true
+        }
+      }));
+    }
+  };
+
+  // Publier un nouveau message
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!newMessage.trim() || submitting) return;
     
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      
       const res = await axios.post('http://localhost:5000/api/messages', {
         content: newMessage,
         forumId: id,
         parentMessageId: null
       }, { withCredentials: true });
       
-      // Ajouter le nouveau message à la liste locale avant d'envoyer via WebSocket
-      setMessages(prevMessages => [res.data.messageData, ...prevMessages]);
+      const newMessageData = res.data.messageData;
+      
+      // Ajouter le nouveau message en local
+      setMessages(prev => [newMessageData, ...prev]);
       setNewMessage('');
       
-      // Envoyer le message via WebSocket pour une mise à jour en temps réel
-      sendMessage({
-        ...res.data.messageData,
-        forumId: id
-      });
+      // Envoyer via WebSocket
+      if (socket && connected) {
+        sendMessage({
+          _id: newMessageData._id,
+          content: newMessageData.content,
+          createdAt: newMessageData.createdAt,
+          forumId: id,
+          author: {
+            _id: newMessageData.author._id,
+            username: newMessageData.author.username,
+            profilePicture: newMessageData.author.profilePicture
+          }
+        });
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de l\'envoi du message');
-      console.error('Erreur d\'envoi de message:', err);
+      setError('Erreur lors de l\'envoi du message');
+      console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Fonction pour gérer les clics multiples sur le bouton de suppression
-  const handleDeleteButtonClick = (messageId) => {
-    const now = Date.now();
-    
-    // Si une suppression est déjà en cours pour ce message
-    if (deleteOps[messageId] && deleteOps[messageId].inProgress) {
-      // Vérifier si moins de 2 secondes se sont écoulées depuis le dernier clic
-      if (now - deleteOps[messageId].lastClickTime < 2000) {
-        // Incrémenter le compteur de clics
-        const newClickCount = deleteOps[messageId].clickCount + 1;
-        
-        setDeleteOps({
-          ...deleteOps,
-          [messageId]: {
-            ...deleteOps[messageId],
-            clickCount: newClickCount,
-            lastClickTime: now
-          }
-        });
-        
-        // Si l'utilisateur a cliqué plusieurs fois, afficher un message
-        if (newClickCount >= 3) {
-          alert("Opération de suppression en cours, veuillez patienter...");
-        }
+  // Supprimer un message ou une réponse avec suppression en cascade
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      // Vérifier d'abord si c'est un message principal
+      const isMainMessage = messages.some(m => m._id === messageId);
+      
+      // Confirmation de suppression
+      if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce message et toutes ses réponses ?')) {
+        return;
       }
-      return; // Ne pas lancer une nouvelle suppression
-    }
-    
-    // Sinon, lancer l'opération de suppression
-    setDeleteOps({
-      ...deleteOps,
-      [messageId]: {
-        inProgress: true,
-        clickCount: 1, 
-        lastClickTime: now
-      }
-    });
-    
-    // Procéder à la confirmation et suppression
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
-      try {
-        // Désactiver le bouton pendant la suppression
-        const btn = document.activeElement;
-        if (btn) btn.disabled = true;
-        
-        axios.delete(`http://localhost:5000/api/messages/${messageId}`, { 
-          withCredentials: true,
-          timeout: 10000 // Timeout plus long pour éviter les problèmes de connexion
-        })
-          .then((response) => {
-            console.log('Réponse de suppression:', response.data);
-            
-            if (response.data.completelyRemoved) {
-              // Si complètement supprimé, enlever de la liste
-              setMessages(prev => prev.filter(m => m._id !== messageId));
-              alert('Message supprimé avec succès!');
-            } else {
-              // Si juste marqué comme supprimé, mettre à jour le message local
-              setMessages(prev => prev.map(m => {
-                if (m._id === messageId) {
-                  return {
-                    ...m,
-                    content: "[Ce message a été supprimé]",
-                    isDeleted: true
-                  };
-                }
-                return m;
-              }));
-              alert('Message marqué comme supprimé!');
-            }
-          })
-          .catch(err => {
-            console.error('Erreur lors de la suppression:', err);
-            
-            // Afficher le message d'erreur approprié
-            if (err.response && err.response.data) {
-              alert(`Erreur lors de la suppression: ${err.response.data.message || 'Erreur serveur'}`);
-            } else if (err.request) {
-              alert('Le serveur n\'a pas répondu. Vérifiez votre connexion.');
-            } else {
-              alert(`Erreur: ${err.message}`);
-            }
-          })
-          .finally(() => {
-            // Réactiver le bouton
-            if (btn) btn.disabled = false;
-            
-            // Réinitialiser l'état de l'opération
-            setDeleteOps({
-              ...deleteOps,
-              [messageId]: {
-                inProgress: false,
-                clickCount: 0,
-                lastClickTime: 0
-              }
-            });
-          });
-      } catch (error) {
-        console.error('Erreur:', error);
-        alert(`Erreur système: ${error.message}`);
-        
-        // Réinitialiser l'état de l'opération
-        setDeleteOps({
-          ...deleteOps,
-          [messageId]: {
-            inProgress: false,
-            clickCount: 0,
-            lastClickTime: 0
-          }
-        });
-      }
-    } else {
-      // Annulation - réinitialiser l'état de l'opération
-      setDeleteOps({
-        ...deleteOps,
-        [messageId]: {
-          inProgress: false,
-          clickCount: 0,
-          lastClickTime: 0
-        }
+      
+      // 1. Envoyer la requête au serveur pour supprimer le message en cascade
+      await axios.delete(`http://localhost:5000/api/messages/${messageId}/cascade`, { 
+        withCredentials: true 
       });
+      
+      console.log(`Message ${messageId} et ses réponses ont été marqués comme supprimés`);
+      
+      // 2. Actualiser les données du forum pour voir les messages supprimés
+      await fetchForumData();
+      
+      // 3. Actualiser le compteur de messages
+      try {
+        const countRes = await axios.get(`http://localhost:5000/api/messages/forum/${id}/count`, {
+          withCredentials: true
+        });
+        console.log(`Nombre de messages mis à jour: ${countRes.data.count}`);
+      } catch (countErr) {
+        console.error("Erreur lors de la mise à jour du compteur:", countErr);
+      }
+      
+    } catch (err) {
+      console.error('Erreur lors de la suppression du message:', err);
+      setError('Erreur lors de la suppression du message');
+      
+      // En cas d'erreur, recharger les données pour rétablir l'état correct
+      fetchForumData();
     }
   };
 
+  // Ouvrir le formulaire de réponse
+  const handleReplyClick = (messageId) => {
+    // Charger les réponses si elles n'existent pas encore
+    if (!replies[messageId]) {
+      loadReplies(messageId);
+    }
+    
+    // Ouvrir/fermer le formulaire de réponse
+    setReplyForm(prev => {
+      if (prev.messageId === messageId) {
+        return { messageId: null, content: '' };
+      } else {
+        return { messageId: messageId, content: '' };
+      }
+    });
+  };
+
+  // Répondre à un message ou une réponse
+  const handleReply = async (parentId, content) => {
+    try {
+      setSubmitting(true);
+      
+      const res = await axios.post('http://localhost:5000/api/messages', {
+        content,
+        forumId: id,
+        parentMessageId: parentId
+      }, { withCredentials: true });
+      
+      const newReply = {
+        ...res.data.messageData,
+        children: []
+      };
+      
+      // Vérifier si c'est une réponse à un message principal
+      const isMainMessage = messages.some(m => m._id === parentId);
+      
+      if (isMainMessage) {
+        // C'est une réponse à un message principal
+        setReplies(prev => {
+          // Si les réponses n'existent pas encore pour ce message
+          if (!prev[parentId]) {
+            return {
+              ...prev,
+              [parentId]: {
+                loading: false,
+                data: [newReply],
+                visible: true
+              }
+            };
+          }
+          
+          // Vérifier si cette réponse existe déjà pour éviter les doublons
+          const replyExists = prev[parentId].data.some(r => r._id === newReply._id);
+          if (replyExists) {
+            // Si la réponse existe déjà, ne pas la dupliquer
+            return prev;
+          }
+          
+          // Sinon ajouter à la liste existante
+          return {
+            ...prev,
+            [parentId]: {
+              ...prev[parentId],
+              data: [...(prev[parentId].data || []), newReply]
+            }
+          };
+        });
+      } else {
+        // C'est une réponse à une réponse - rechercher dans l'arborescence
+        setReplies(prev => {
+          const updated = { ...prev };
+          
+          // Fonction pour ajouter une réponse imbriquée
+          const addNestedReply = (repliesArray, targetId, newReplyData) => {
+            if (!repliesArray) return [];
+            
+            return repliesArray.map(reply => {
+              // Si c'est la réponse parente, ajouter la nouvelle réponse comme enfant
+              if (reply._id === targetId) {
+                // Vérifier si cette réponse existe déjà pour éviter les doublons
+                const childExists = (reply.children || []).some(r => r._id === newReplyData._id);
+                if (childExists) {
+                  return reply; // Ne pas dupliquer
+                }
+                
+                return {
+                  ...reply,
+                  children: [...(reply.children || []), newReplyData]
+                };
+              }
+              
+              // Sinon, traiter ses enfants récursivement
+              if (reply.children && reply.children.length > 0) {
+                return {
+                  ...reply,
+                  children: addNestedReply(reply.children, targetId, newReplyData)
+                };
+              }
+              
+              return reply;
+            });
+          };
+          
+          // Parcourir toutes les réponses pour trouver la réponse parente
+          for (const msgId of Object.keys(updated)) {
+            if (updated[msgId] && updated[msgId].data) {
+              updated[msgId].data = addNestedReply(updated[msgId].data, parentId, newReply);
+            }
+          }
+          
+          return updated;
+        });
+      }
+      
+      // Envoyer via WebSocket seulement si l'utilisateur est connecté
+      // pour éviter que la personne qui poste reçoive son propre message en double
+      if (socket && connected) {
+        // Ajouter un délai très court pour éviter les doublons
+        setTimeout(() => {
+          sendMessage({
+            _id: newReply._id,
+            content: newReply.content,
+            createdAt: newReply.createdAt,
+            forumId: id,
+            parentMessage: parentId,
+            author: {
+              _id: newReply.author._id,
+              username: newReply.author.username,
+              profilePicture: newReply.author.profilePicture || ''
+            }
+          });
+        }, 50);
+      }
+      
+      // Fermer le formulaire
+      setReplyForm({ messageId: null, content: '' });
+      
+      return newReply;
+    } catch (err) {
+      console.error('Erreur lors de l\'envoi de la réponse:', err);
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
   if (loading) {
     return (
       <div className="d-flex justify-content-center my-5">
@@ -250,13 +418,19 @@ const ForumDetail = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2>{forum.name}</h2>
-          <p className="text-muted">{forum.description}</p>
+          <p className="text-muted">
+            {forum.description}
+            {messages.length > 0 && (
+              <span className="badge bg-info ms-2">{messages.length} message{messages.length > 1 ? 's' : ''}</span>
+            )}
+          </p>
         </div>
-        <Link to="/" className="btn btn-primary">
+        <Link to="/" className="btn btn-primary" onClick={() => setTimeout(() => window.location.reload(), 100)}>
           Retour aux forums
         </Link>
       </div>
 
+      {/* Formulaire pour nouveau message */}
       <Card className="mb-4 shadow-sm">
         <Card.Body>
           <Form onSubmit={handleSubmit}>
@@ -291,73 +465,163 @@ const ForumDetail = () => {
         </Card.Body>
       </Card>
 
+      {/* Liste des messages */}
       <Card className="border-0 shadow-sm">
         <Card.Header className="bg-light">
-          <h4 className="mb-0">Messages</h4>
+          <h4 className="mb-0">
+            Messages {messages.length > 0 ? (
+              <span className="badge bg-primary ms-2">{messages.length} message{messages.length > 1 ? 's' : ''}</span>
+            ) : (
+              <span className="badge bg-secondary ms-2">0 message</span>
+            )}
+          </h4>
         </Card.Header>
         <Card.Body>
-          {messages.length === 0 ? (
-            <Alert variant="info">Aucun message dans ce forum pour le moment.</Alert>
-          ) : (
-            <ListGroup variant="flush">
-              {messages.map((message) => (
-                <ListGroup.Item 
-                  key={message._id} 
-                  className={`mb-3 border-bottom p-3 ${message.isDeleted ? 'bg-light' : ''}`}
-                >
-                  <div className="d-flex justify-content-between">
-                    <div className="d-flex align-items-center">
-                      <img
-                        src={message.author.profilePicture || "https://via.placeholder.com/40"}
-                        alt={message.author.username}
-                        className="rounded-circle me-2"
-                        width="40"
-                        height="40"
-                        style={{ opacity: message.isDeleted ? 0.5 : 1 }}
-                      />
-                      <div>
-                        <Link to={`/profile/${message.author._id}`} className="fw-bold text-decoration-none">
-                          {message.author.username}
-                        </Link>
-                        <div className="text-muted small">
-                          {new Date(message.createdAt).toLocaleString()}
-                          {message.isEdited && !message.isDeleted && ' (modifié)'}
-                          {message.isDeleted && ' (supprimé)'}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <Link 
-                        to={`/message/${message._id}`} 
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={(e) => {
-                          // Vérifier si l'ID est valide avant de naviguer
-                          if (!message._id || typeof message._id !== 'string' || !message._id.match(/^[0-9a-fA-F]{24}$/)) {
-                            e.preventDefault();
-                            alert("Ce message n'est pas accessible");
-                          }
-                        }}
+          {messages.length > 0 ? (
+            messages.map(message => (
+              <div 
+                key={message._id} 
+                className="forum-message mb-4"
+                id={`message-${message._id}`}
+              >
+                <div className="message-header">
+                  <div className="message-author">
+                    <img 
+                      src={message.author?.profilePicture || "https://via.placeholder.com/40"} 
+                      alt={message.author?.username || "Utilisateur"} 
+                      className="author-avatar"
+                    />
+                    <span className="author-name">{message.author?.username || "Utilisateur"}</span>
+                  </div>
+                  <small className="text-muted">
+                    {new Date(message.createdAt).toLocaleString()}
+                    {message.isEdited && ' (modifié)'}
+                  </small>
+                </div>
+                
+                <div className="message-content">
+                  {message.content === "[Ce message a été supprimé]" ? (
+                    <em className="text-muted">[Ce message a été supprimé]</em>
+                  ) : (
+                    message.content
+                  )}
+                </div>
+                
+                <div className="message-actions">
+                  <Button 
+                    variant="link" 
+                    className="btn-sm text-primary" 
+                    onClick={() => handleReplyClick(message._id)}
+                  >
+                    <BsReply /> Répondre
+                  </Button>
+                  
+                  {(currentUser && currentUser.id === message.author?._id) || currentUser.role === 'admin' ? (
+                    <>
+                      <Button 
+                        variant="link" 
+                        className="btn-sm text-warning" 
+                        onClick={() => alert('Fonctionnalité de modification à venir')}
                       >
-                        Voir les réponses
-                      </Link>
-                      {!message.isDeleted && (currentUser.id === message.author._id || currentUser.role === 'admin') && (
-                        <Button 
-                          variant="danger" 
-                          size="sm"
-                          className="ms-2"
-                          onClick={() => handleDeleteButtonClick(message._id)}
-                        >
-                          Supprimer
-                        </Button>
-                      )}
+                        <BsPencil /> Modifier
+                      </Button>
+                      <Button 
+                        variant="link" 
+                        className="btn-sm text-danger" 
+                        onClick={() => handleDeleteMessage(message._id)}
+                      >
+                        <BsTrash /> Supprimer
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
+                
+                {/* Formulaire de réponse */}
+                {replyForm.messageId === message._id && (
+                  <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!replyForm.content.trim() || submitting) return;
+                    handleReply(message._id, replyForm.content);
+                  }} className="reply-form mt-3 mb-3 p-3 border border-light rounded">
+                    <Form.Group className="mb-2">
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        value={replyForm.content}
+                        onChange={(e) => setReplyForm({
+                          messageId: message._id,
+                          content: e.target.value
+                        })}
+                        placeholder={`Répondre à ${message.author?.username}...`}
+                        required
+                      />
+                    </Form.Group>
+                    <div className="d-flex">
+                      <Button type="submit" size="sm" disabled={submitting} variant="primary" className="me-2">
+                        {submitting ? (
+                          <>
+                            <Spinner
+                              as="span"
+                              animation="border"
+                              size="sm"
+                              role="status"
+                              aria-hidden="true"
+                              className="me-1"
+                            />
+                            Envoi...
+                          </>
+                        ) : 'Répondre'}
+                      </Button>
+                      <Button 
+                        variant="outline-secondary" 
+                        size="sm" 
+                        onClick={() => setReplyForm({messageId: null, content: ''})}
+                      >
+                        Annuler
+                      </Button>
                     </div>
+                  </Form>
+                )}
+                
+                {/* Liste des réponses */}
+                {replies[message._id] && (
+                  <div className="replies-container mt-3 ms-4 border-start ps-3">
+                    <h6 className="replies-header mb-2">
+                      {replies[message._id].data && replies[message._id].data.length > 0 
+                        ? `${replies[message._id].data.length} réponse(s)` 
+                        : 'Réponses'}
+                    </h6>
+                    
+                    {replies[message._id].loading && (
+                      <div className="text-center py-3">
+                        <Spinner animation="border" size="sm" />
+                        <span className="ms-2">Chargement des réponses...</span>
+                      </div>
+                    )}
+                    
+                    {replies[message._id].data && replies[message._id].data.length > 0 ? (
+                      replies[message._id].data.map(reply => (
+                        <ReplyItem 
+                          key={reply._id} 
+                          reply={{
+                            ...reply,
+                            isCurrentUserAuthor: (currentUser && currentUser.id === reply.author?._id) || currentUser.role === 'admin'
+                          }} 
+                          onDelete={handleDeleteMessage}
+                          onReply={handleReply}
+                        />
+                      ))
+                    ) : !replies[message._id].loading ? (
+                      <p className="text-muted">Aucune réponse pour ce message.</p>
+                    ) : null}
                   </div>
-                  <div className={`mt-2 p-2 bg-light rounded ${message.isDeleted ? 'fst-italic text-muted' : ''}`}>
-                    {message.content}
-                  </div>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="no-messages">
+              <p>Aucun message dans ce forum. Soyez le premier à publier !</p>
+            </div>
           )}
         </Card.Body>
       </Card>

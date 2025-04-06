@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, ListGroup, Button, Spinner, Alert, Table, Badge } from 'react-bootstrap';
+import { Card, Row, Col, ListGroup, Button, Spinner, Alert, Table, Badge, Form, InputGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { BsSearch } from 'react-icons/bs';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -13,39 +14,95 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [users, setUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
+
+  const fetchAdminData = async () => {
+    try {
+      setLoading(true);
+      
+      // Récupérer la liste des utilisateurs
+      const usersRes = await axios.get('http://localhost:5000/api/users/', { 
+        withCredentials: true 
+      });
+      
+      // Récupérer la liste des utilisateurs en attente
+      const pendingUsersRes = await axios.get('http://localhost:5000/api/users/pending', { 
+        withCredentials: true 
+      });
+      
+      // Récupérer la liste des forums
+      const forumsRes = await axios.get('http://localhost:5000/api/forums/', { 
+        withCredentials: true 
+      });
+      
+      // Compter les messages
+      const messagesRes = await axios.get('http://localhost:5000/api/messages/count', { 
+        withCredentials: true 
+      }).catch(err => {
+        console.warn('Erreur lors du comptage des messages:', err);
+        return { data: { count: 0 } }; // Valeur par défaut si l'API échoue
+      });
+      
+      // Stocker la liste des utilisateurs
+      setUsers(usersRes.data);
+      setFilteredUsers(usersRes.data);
+      
+      // Calculer les statistiques
+      setStats({
+        totalUsers: usersRes.data.length,
+        pendingUsers: pendingUsersRes.data.length,
+        totalForums: forumsRes.data.length,
+        totalMessages: messagesRes.data?.count || 0
+      });
+      
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors du chargement des données administratives');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAdminData = async () => {
-      try {
-        setLoading(true);
-        
-        // Récupérer les statistiques
-        const usersRes = await axios.get('http://localhost:5000/api/users', { withCredentials: true });
-        const pendingUsersRes = await axios.get('http://localhost:5000/api/users/pending', { withCredentials: true });
-        const forumsRes = await axios.get('http://localhost:5000/api/forums', { withCredentials: true });
-        
-        // Stocker la liste des utilisateurs
-        setUsers(usersRes.data);
-        
-        // Calculer les statistiques
-        setStats({
-          totalUsers: usersRes.data.length,
-          pendingUsers: pendingUsersRes.data.length,
-          totalForums: forumsRes.data.length,
-          totalMessages: 0 // À implémenter: endpoint pour compter les messages
-        });
-        
-        setError('');
-      } catch (err) {
-        setError(err.response?.data?.message || 'Erreur lors du chargement des données administratives');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAdminData();
   }, []);
+
+  // Ajouter un effet pour rafraîchir les données lorsque l'utilisateur revient sur la page
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("Fenêtre de retour au premier plan, actualisation des compteurs d'administration");
+      fetchAdminData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    // Rafraîchir régulièrement les statistiques
+    const refreshInterval = setInterval(() => {
+      fetchAdminData();
+    }, 60000); // Rafraîchir toutes les 60 secondes
+    
+    // Nettoyage de l'écouteur d'événement et de l'intervalle
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Filtrer les utilisateurs lorsque le terme de recherche change
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const lowercasedSearch = searchTerm.toLowerCase();
+      const filtered = users.filter(user => 
+        user.username.toLowerCase().includes(lowercasedSearch) || 
+        user.email.toLowerCase().includes(lowercasedSearch)
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [searchTerm, users]);
 
   // Fonction pour changer le rôle d'un utilisateur
   const handleRoleChange = async (userId, newRole) => {
@@ -66,6 +123,11 @@ const AdminDashboard = () => {
       setError(err.response?.data?.message || 'Erreur lors de la modification du rôle');
       console.error(err);
     }
+  };
+
+  // Fonction pour gérer la recherche
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
 
   if (loading) {
@@ -157,12 +219,28 @@ const AdminDashboard = () => {
       
       {/* Liste des utilisateurs inscrits */}
       <Card className="mb-4">
-        <Card.Header>
+        <Card.Header className="d-flex justify-content-between align-items-center">
           <h4 className="mb-0">Utilisateurs inscrits</h4>
+          <Form className="d-flex" style={{ width: '300px' }}>
+            <InputGroup>
+              <Form.Control
+                type="search"
+                placeholder="Rechercher un utilisateur..."
+                aria-label="Rechercher"
+                value={searchTerm}
+                onChange={handleSearch}
+              />
+              <Button variant="outline-primary">
+                <BsSearch />
+              </Button>
+            </InputGroup>
+          </Form>
         </Card.Header>
         <Card.Body>
-          {users.length === 0 ? (
-            <Alert variant="info">Aucun utilisateur inscrit</Alert>
+          {filteredUsers.length === 0 ? (
+            <Alert variant="info">
+              {searchTerm ? 'Aucun utilisateur correspondant à votre recherche' : 'Aucun utilisateur inscrit'}
+            </Alert>
           ) : (
             <Table responsive striped hover>
               <thead>
@@ -176,7 +254,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map(user => (
+                {filteredUsers.map(user => (
                   <tr key={user._id}>
                     <td>
                       <Link to={`/profile/${user._id}`} className="text-decoration-none">
@@ -198,27 +276,16 @@ const AdminDashboard = () => {
                     </td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
-                      {user.status === 'active' && (
-                        <>
-                          {user.role === 'admin' ? (
-                            <Button 
-                              variant="outline-secondary" 
-                              size="sm"
-                              onClick={() => handleRoleChange(user._id, 'member')}
-                            >
-                              Rétrograder
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="outline-primary" 
-                              size="sm"
-                              onClick={() => handleRoleChange(user._id, 'admin')}
-                            >
-                              Promouvoir
-                            </Button>
-                          )}
-                        </>
-                      )}
+                      <Button 
+                        variant={user.role === 'admin' ? 'outline-secondary' : 'outline-primary'} 
+                        size="sm"
+                        onClick={() => handleRoleChange(
+                          user._id, 
+                          user.role === 'admin' ? 'user' : 'admin'
+                        )}
+                      >
+                        {user.role === 'admin' ? 'Rétrograder' : 'Promouvoir'}
+                      </Button>
                     </td>
                   </tr>
                 ))}

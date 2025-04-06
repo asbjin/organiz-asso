@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Spinner } from 'react-bootstrap';
 
 const AdminRoute = ({ children }) => {
-  const { currentUser, loading, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -16,7 +16,11 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!currentUser || !isAdmin) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!isAdmin) {
     return <Navigate to="/" />;
   }
 

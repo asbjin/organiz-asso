@@ -1,15 +1,19 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Spinner, Alert, Modal, Form } from 'react-bootstrap';
+import { Container, Card, Button, Spinner, Alert, Modal, Form, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { getForums } from '../../services/forumService';
+import { getForums, getForumMessageCount } from '../../services/forumService';
 import { useAuth } from '../../contexts/AuthContext';
+import { BsChat, BsCalendar3, BsPeople, BsArrowUpRightCircle, BsLock, BsPlus } from 'react-icons/bs';
 import axios from 'axios';
+import './ForumStyles.css';
 
 const ForumList = () => {
   const [forums, setForums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { currentUser, loading: authLoading } = useAuth();
+  const [sortMethod, setSortMethod] = useState('recent'); // 'recent', 'popular', 'alphabetical'
   
   // États pour le modal de création de forum
   const [showModal, setShowModal] = useState(false);
@@ -26,12 +30,61 @@ const ForumList = () => {
     }
   }, [authLoading]);
 
+  // Ajouter un effet pour rafraîchir les compteurs lorsque l'utilisateur revient à cette page
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!authLoading) {
+        console.log("Fenêtre de retour au premier plan, actualisation des compteurs de messages");
+        fetchForums();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    // Nettoyage de l'écouteur d'événement
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [authLoading]);
+
+  useEffect(() => {
+    // Rafraîchir les forums à chaque fois que le composant est monté ou remis au premier plan
+    const refreshInterval = setInterval(() => {
+      if (!authLoading) {
+        fetchForums();
+      }
+    }, 30000); // Rafraîchir toutes les 30 secondes
+    
+    // Nettoyer l'intervalle lorsque le composant est démonté
+    return () => clearInterval(refreshInterval);
+  }, [authLoading]);
+
   const fetchForums = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getForums();
-      setForums(data);
+      
+      // Récupérer le nombre de messages pour chaque forum
+      const forumsWithMessageCount = await Promise.all(
+        data.map(async (forum) => {
+          try {
+            const messageCount = await getForumMessageCount(forum._id);
+            return {
+              ...forum,
+              messageCount: messageCount
+            };
+          } catch (err) {
+            console.error(`Erreur lors du chargement du compteur de messages pour ${forum.name}:`, err);
+            return {
+              ...forum,
+              messageCount: 0
+            };
+          }
+        })
+      );
+      
+      setForums(forumsWithMessageCount);
     } catch (err) {
       console.error('Erreur lors du chargement des forums:', err);
       
@@ -85,84 +138,195 @@ const ForumList = () => {
     }
   };
 
+  const getSortedForums = () => {
+    if (!forums) return [];
+    
+    switch (sortMethod) {
+      case 'popular':
+        return [...forums].sort((a, b) => (b.messageCount || 0) - (a.messageCount || 0));
+      case 'alphabetical':
+        return [...forums].sort((a, b) => a.name.localeCompare(b.name));
+      case 'recent':
+      default:
+        return [...forums].sort((a, b) => new Date(b.lastActivity || b.createdAt) - new Date(a.lastActivity || a.createdAt));
+    }
+  };
+
   if (authLoading) {
     return (
-      <Container className="mt-4 text-center">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Chargement de l'authentification...</span>
-        </Spinner>
-        <p className="mt-2">Vérification de l'authentification...</p>
+      <Container className="auth-loading-container">
+        <div className="loading-animation">
+          <Spinner animation="border" role="status" className="spinner-large">
+            <span className="visually-hidden">Chargement de l'authentification...</span>
+          </Spinner>
+          <p>Vérification de l'authentification...</p>
+        </div>
       </Container>
     );
   }
 
   if (loading) {
     return (
-      <Container className="mt-4 text-center">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Chargement des forums...</span>
-        </Spinner>
-        <p className="mt-2">Chargement des forums...</p>
+      <Container className="loading-container">
+        <div className="loading-animation">
+          <Spinner animation="border" role="status" className="spinner-large">
+            <span className="visually-hidden">Chargement des forums...</span>
+          </Spinner>
+          <p>Chargement des forums...</p>
+        </div>
       </Container>
     );
   }
 
   if (error) {
     return (
-      <Container className="mt-4">
-        <Alert variant="danger">
-          {error}
-          <div className="mt-2">
-            <Button variant="outline-primary" onClick={fetchForums}>Réessayer</Button>
+      <Container className="error-container">
+        <Alert variant="danger" className="error-alert">
+          <div className="error-icon">⚠️</div>
+          <div className="error-content">
+            <h4>Oups! Une erreur s'est produite</h4>
+            <p>{error}</p>
+            <Button variant="outline-danger" onClick={fetchForums} className="retry-button">
+              Réessayer
+            </Button>
           </div>
         </Alert>
       </Container>
     );
   }
 
+  const sortedForums = getSortedForums();
+
   return (
-    <Container className="mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Forums disponibles</h2>
-        {currentUser && (
-          <Button variant="success" onClick={() => setShowModal(true)}>
-            Créer un forum
-          </Button>
-        )}
+    <Container className="forum-container">
+      <div className="header-section">
+        <div className="title-section">
+          <h1>Forums</h1>
+          <p className="text-muted">Découvrez et participez aux discussions</p>
+        </div>
+        <div className="action-section">
+          {currentUser && (
+            <Button 
+              variant="primary" 
+              className="create-forum-btn"
+              onClick={() => setShowModal(true)}
+            >
+              <BsPlus size={20} /> Créer un forum
+            </Button>
+          )}
+        </div>
       </div>
 
-      {forums.length === 0 ? (
-        <Alert variant="info">
-          Aucun forum disponible pour le moment.
-        </Alert>
+      <div className="sorting-section">
+        <div className="sort-options">
+          <Button 
+            variant={sortMethod === 'recent' ? 'primary' : 'light'}
+            className="sort-btn"
+            onClick={() => setSortMethod('recent')}
+          >
+            Récent
+          </Button>
+          <Button 
+            variant={sortMethod === 'popular' ? 'primary' : 'light'}
+            className="sort-btn"
+            onClick={() => setSortMethod('popular')}
+          >
+            Populaire
+          </Button>
+          <Button 
+            variant={sortMethod === 'alphabetical' ? 'primary' : 'light'}
+            className="sort-btn"
+            onClick={() => setSortMethod('alphabetical')}
+          >
+            A-Z
+          </Button>
+        </div>
+      </div>
+
+      {sortedForums.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🏝️</div>
+          <h3>Aucun forum disponible</h3>
+          <p>Soyez le premier à créer un forum pour commencer les discussions!</p>
+          {currentUser && (
+            <Button variant="primary" onClick={() => setShowModal(true)}>
+              Créer votre premier forum
+            </Button>
+          )}
+        </div>
       ) : (
-        <Row>
-          {forums.map((forum) => (
-            <Col key={forum._id} md={4} className="mb-4">
-              <Card>
-                <Card.Body>
-                  <Card.Title>{forum.name}</Card.Title>
-                  <Card.Text>{forum.description}</Card.Text>
-                  <Link to={`/forum/${forum._id}`}>
-                    <Button variant="primary">Voir le forum</Button>
-                  </Link>
-                </Card.Body>
-                <Card.Footer className="text-muted">
-                  {forum.messageCount || 0} messages · Créé le {new Date(forum.createdAt).toLocaleDateString()}
-                </Card.Footer>
-              </Card>
-            </Col>
+        <div className="forums-list">
+          {sortedForums.map((forum, index) => (
+            <div key={forum._id} className="forum-card-wrapper fade-in" style={{animationDelay: `${index * 0.05}s`}}>
+              <Link to={`/forum/${forum._id}`} className="forum-card-link">
+                <Card className="forum-card">
+                  <Card.Body>
+                    <div className="forum-card-content">
+                      <div className="forum-info">
+                        <h3 className="forum-title">
+                          {forum.name}
+                          {forum.type === 'closed' && (
+                            <BsLock className="forum-lock-icon" title="Forum privé" />
+                          )}
+                        </h3>
+                        <p className="forum-description">{forum.description}</p>
+                        
+                        <div className="forum-stats">
+                          <p className="date-txt" style={{ color: '#007bff', fontWeight: 'bold' }}>
+                            <BsCalendar3 /> {forum.createdAt ? new Date(forum.createdAt).toLocaleDateString('fr-FR', { 
+                              day: '2-digit', 
+                              month: '2-digit', 
+                              year: 'numeric'
+                            }) : 'Date inconnue'}
+                          </p>
+                          <div className="author-txt" style={{ color: '#28a745', fontWeight: 'bold' }}>
+                            <BsPeople /> {forum.creator ? forum.creator.username : "Administrateur"}
+                          </div>
+                          <div className="messages-count" style={{ color: '#dc3545', fontWeight: 'bold' }}>
+                            <BsChat /> {typeof forum.messageCount === 'number' ? forum.messageCount : 0} message{forum.messageCount !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="forum-action">
+                        <BsArrowUpRightCircle size={24} />
+                      </div>
+                    </div>
+                  </Card.Body>
+                  <Card.Footer style={{ backgroundColor: '#f8f9fa', borderTop: '1px solid #dee2e6' }}>
+                    <div className="forum-badges">
+                      <Badge bg={forum.type === 'open' ? 'primary' : 'secondary'} className="forum-badge">
+                        {forum.type === 'open' ? 'Public' : 'Privé'}
+                      </Badge>
+                      {(forum.messageCount > 10 || forum.messageCount === 0) && (
+                        <Badge bg={forum.messageCount > 0 ? "success" : "danger"} className="forum-badge">
+                          {forum.messageCount > 10 ? 'Actif' : forum.messageCount === 0 ? 'Aucun message' : ''}
+                        </Badge>
+                      )}
+                    </div>
+                  </Card.Footer>
+                </Card>
+              </Link>
+            </div>
           ))}
-        </Row>
+        </div>
       )}
 
       {/* Modal pour créer un nouveau forum */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      <Modal 
+        show={showModal} 
+        onHide={() => setShowModal(false)}
+        centered
+        className="forum-creation-modal"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Créer un nouveau forum</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {createError && <Alert variant="danger">{createError}</Alert>}
+          {createError && (
+            <Alert variant="danger" className="creation-error">
+              {createError}
+            </Alert>
+          )}
           <Form onSubmit={handleCreateForum}>
             <Form.Group className="mb-3">
               <Form.Label>Nom du forum *</Form.Label>
@@ -171,8 +335,12 @@ const ForumList = () => {
                 value={newForumName}
                 onChange={(e) => setNewForumName(e.target.value)}
                 placeholder="Entrez le nom du forum"
+                className="creation-input"
                 required
               />
+              <Form.Text className="text-muted">
+                Choisissez un nom clair et descriptif (max 50 caractères)
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Description *</Form.Label>
@@ -182,25 +350,49 @@ const ForumList = () => {
                 value={newForumDescription}
                 onChange={(e) => setNewForumDescription(e.target.value)}
                 placeholder="Décrivez l'objectif de ce forum"
+                className="creation-textarea"
                 required
               />
+              <Form.Text className="text-muted">
+                Expliquez le sujet du forum et les règles de base
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Type de forum</Form.Label>
-              <Form.Select 
-                value={newForumType}
-                onChange={(e) => setNewForumType(e.target.value)}
-              >
-                <option value="open">Public</option>
-                <option value="closed">Privé</option>
-              </Form.Select>
+              <div className="forum-type-options">
+                <div 
+                  className={`forum-type-option ${newForumType === 'open' ? 'selected' : ''}`}
+                  onClick={() => setNewForumType('open')}
+                >
+                  <div className="option-icon">🌐</div>
+                  <div className="option-info">
+                    <h5>Public</h5>
+                    <p>Visible et accessible par tous les membres</p>
+                  </div>
+                </div>
+                <div 
+                  className={`forum-type-option ${newForumType === 'closed' ? 'selected' : ''}`}
+                  onClick={() => setNewForumType('closed')}
+                >
+                  <div className="option-icon">🔒</div>
+                  <div className="option-info">
+                    <h5>Privé</h5>
+                    <p>Accès restreint aux administrateurs</p>
+                  </div>
+                </div>
+              </div>
             </Form.Group>
-            <div className="d-flex justify-content-end">
-              <Button variant="secondary" className="me-2" onClick={() => setShowModal(false)}>
+            <div className="modal-actions">
+              <Button variant="outline-secondary" onClick={() => setShowModal(false)}>
                 Annuler
               </Button>
-              <Button variant="success" type="submit" disabled={creating}>
-                {creating ? 'Création...' : 'Créer le forum'}
+              <Button 
+                variant="primary" 
+                type="submit" 
+                disabled={creating || !newForumName || !newForumDescription}
+                className="create-button"
+              >
+                {creating ? 'Création en cours...' : 'Créer le forum'}
               </Button>
             </div>
           </Form>
@@ -210,4 +402,4 @@ const ForumList = () => {
   );
 };
 
-export default ForumList;
+export default ForumList; 

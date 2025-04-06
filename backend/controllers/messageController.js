@@ -157,14 +157,15 @@ exports.getForumMessages = async (req, res) => {
         return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
       }
       
-      // Récupérer les messages principaux (sans parent)
+      // Récupérer les messages principaux (sans parent) et non supprimés
       try {
         const messages = await Message.find({ 
           forum: forumId,
-          parentMessage: null
+          parentMessage: null,
+          isDeleted: { $ne: true }  // Ne pas inclure les messages supprimés
         }).sort({ createdAt: -1 });
         
-        console.log(`${messages.length} messages trouvés pour le forum ${forumId}`);
+        console.log(`${messages.length} messages non supprimés trouvés pour le forum ${forumId}`);
         
         // Pour chaque message, ajouter manuellement les informations de l'auteur
         // cela évite les problèmes avec populate
@@ -280,7 +281,10 @@ exports.getMessageReplies = async (req, res) => {
     async function getRepliesRecursive(parentId, depth = 0, maxDepth = 5) {
       if (depth >= maxDepth) return []; // Limiter la profondeur pour éviter les boucles infinies
       
-      const directReplies = await Message.find({ parentMessage: parentId })
+      const directReplies = await Message.find({ 
+        parentMessage: parentId,
+        isDeleted: { $ne: true } // Ne pas inclure les réponses supprimées
+      })
         .populate('author', 'username profilePicture')
         .sort({ createdAt: 1 });
       
@@ -296,7 +300,7 @@ exports.getMessageReplies = async (req, res) => {
     
     // Récupérer les réponses avec structure imbriquée
     const replies = await getRepliesRecursive(messageId);
-    console.log(`${replies.length} réponses trouvées pour le message ${messageId}`);
+    console.log(`${replies.length} réponses non supprimées trouvées pour le message ${messageId}`);
     
     res.status(200).json(replies);
   } catch (error) {
@@ -342,110 +346,116 @@ exports.updateMessage = async (req, res) => {
   }
 };
 
-// Supprimer un message (système style Reddit)
+// Supprimer un message
 exports.deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
-    console.log(`Tentative de suppression du message ${messageId} par l'utilisateur ${req.user._id}`);
+    console.log(`Suppression du message ${messageId} demandée par ${req.user.username} (${req.user._id})`);
     
-    // Vérifier si l'ID est valide
-    if (!messageId.match(/^[0-9a-fA-F]{24}$/)) {
-      console.log(`ID de message invalide: ${messageId}`);
-      return res.status(400).json({ message: 'ID de message invalide' });
-    }
-    
-    // Récupérer le message
+    // Trouver le message
     const message = await Message.findById(messageId);
+    
     if (!message) {
-      console.log(`Message ${messageId} non trouvé dans la base de données`);
       return res.status(404).json({ message: 'Message non trouvé.' });
     }
     
-    // Vérifier si l'utilisateur est l'auteur du message ou un administrateur
-    const isAuthor = message.author.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
-    
-    if (!isAuthor && !isAdmin) {
-      console.log(`Accès non autorisé: utilisateur ${req.user._id} tente de supprimer le message ${messageId} de l'utilisateur ${message.author}`);
+    // Vérifier si l'utilisateur est autorisé à supprimer ce message
+    // (auteur du message ou administrateur)
+    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
     }
     
-    console.log(`Autorisation vérifiée: ${isAuthor ? 'auteur' : 'admin'}`);
+    // Marquer le message comme supprimé au lieu de le supprimer physiquement
+    await Message.findByIdAndUpdate(messageId, {
+      isDeleted: true,
+      deletedAt: new Date(),
+      content: "[Ce message a été supprimé]"
+    });
     
-    // Vérifier si le message a des réponses
-    const hasReplies = await Message.exists({ parentMessage: messageId });
-    console.log(`Le message ${messageId} a des réponses: ${hasReplies ? 'oui' : 'non'}`);
+    console.log(`Message ${messageId} marqué comme supprimé`);
     
-    if (hasReplies) {
-      // Si le message a des réponses, on marque juste son contenu comme supprimé
-      message.content = "[Ce message a été supprimé]";
-      message.isDeleted = true;
-      message.deletedAt = Date.now();
-      await message.save();
-      
-      console.log(`Message ${messageId} marqué comme supprimé`);
-      
-      return res.status(200).json({
-        message: 'Message marqué comme supprimé.',
-        isDeleted: true,
-        messageData: {
-          _id: message._id,
-          content: message.content,
-          isDeleted: message.isDeleted
-        }
-      });
-    } else {
-      // Si le message n'a pas de réponses, on peut le supprimer complètement
-      // Vérifier d'abord si c'est un message parent ou une réponse
-      if (message.parentMessage) {
-        // C'est une réponse, on peut la supprimer
-        await Message.findByIdAndDelete(messageId);
-        console.log(`Réponse ${messageId} supprimée complètement`);
-        
-        return res.status(200).json({
-          message: 'Réponse supprimée avec succès.',
-          completelyRemoved: true
-        });
-      } else {
-        // C'est un message parent, vérifier s'il a été posté depuis moins de 24h
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
-        if (message.createdAt > oneDayAgo) {
-          // Moins de 24h, on peut le supprimer complètement
-          await Message.findByIdAndDelete(messageId);
-          console.log(`Message parent ${messageId} supprimé complètement (moins de 24h)`);
-          
-          return res.status(200).json({
-            message: 'Message supprimé avec succès.',
-            completelyRemoved: true
-          });
-        } else {
-          // Plus de 24h, on le marque comme supprimé
-          message.content = "[Ce message a été supprimé]";
-          message.isDeleted = true;
-          message.deletedAt = Date.now();
-          await message.save();
-          
-          console.log(`Message parent ${messageId} marqué comme supprimé (plus de 24h)`);
-          
-          return res.status(200).json({
-            message: 'Message marqué comme supprimé.',
-            isDeleted: true,
-            messageData: {
-              _id: message._id,
-              content: message.content,
-              isDeleted: message.isDeleted
-            }
-          });
-        }
-      }
-    }
+    return res.status(200).json({
+      message: 'Message supprimé avec succès.',
+      softDeleted: true
+    });
   } catch (error) {
     console.error(`Erreur lors de la suppression du message ${req.params.messageId}:`, error);
     res.status(500).json({ 
       message: 'Erreur serveur lors de la suppression du message.', 
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// Fonction auxiliaire pour trouver tous les IDs des messages enfants récursivement
+async function findAllChildrenIds(parentId, allIds = []) {
+  const children = await Message.find({ parentMessage: parentId }).select('_id');
+  const childrenIds = children.map(child => child._id);
+  
+  allIds.push(...childrenIds);
+  
+  for (const childId of childrenIds) {
+    await findAllChildrenIds(childId, allIds);
+  }
+  
+  return allIds;
+}
+
+// Supprimer un message et toutes ses réponses en cascade
+exports.deleteMessageCascade = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`Suppression en cascade du message ${id} demandée par ${req.user.username} (${req.user._id})`);
+    
+    // Trouver le message principal
+    const message = await Message.findById(id);
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message non trouvé.' });
+    }
+    
+    // Vérifier si l'utilisateur est autorisé à supprimer ce message
+    // (auteur du message ou administrateur)
+    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
+    }
+    
+    // Collecter tous les IDs des réponses à supprimer
+    const replyIds = await findAllChildrenIds(id);
+    console.log(`Trouvé ${replyIds.length} réponses à marquer comme supprimées pour le message ${id}`);
+    
+    // Tous les IDs à marquer comme supprimés (message principal + réponses)
+    const allIdsToDelete = [id, ...replyIds];
+    
+    // Marquer tous les messages comme supprimés en une seule opération (soft delete)
+    const updateResult = await Message.updateMany(
+      { _id: { $in: allIdsToDelete } },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          content: "[Ce message a été supprimé]"
+        }
+      }
+    );
+    
+    console.log(`Suppression logique effectuée: ${updateResult.modifiedCount} messages marqués comme supprimés`);
+    
+    return res.status(200).json({
+      message: 'Message et ses réponses supprimés avec succès.',
+      deletedCount: updateResult.modifiedCount,
+      details: {
+        parentMessage: id,
+        deletedReplies: replyIds,
+        totalModified: allIdsToDelete.length
+      }
+    });
+  } catch (error) {
+    console.error(`Erreur lors de la suppression en cascade du message ${req.params.id}:`, error);
+    res.status(500).json({ 
+      message: 'Erreur serveur lors de la suppression en cascade.', 
+      error: error.message
     });
   }
 };
@@ -521,7 +531,10 @@ exports.getUserMessages = async (req, res) => {
     console.log('Récupération des messages pour utilisateur:', userId);
         
     // Construire la requête
-    const query = { author: userId };
+    const query = { 
+      author: userId,
+      isDeleted: { $ne: true } // Ne pas inclure les messages supprimés
+    };
     
     // Exclure les messages des forums fermés pour les non-admins
     if (req.user.role !== 'admin' && req.user._id.toString() !== userId) {
@@ -538,5 +551,33 @@ exports.getUserMessages = async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération des messages utilisateur:', error);
     res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+  }
+};
+
+// Compter le nombre total de messages
+exports.countMessages = async (req, res) => {
+  try {
+    const count = await Message.countDocuments({
+      isDeleted: { $ne: true } // Ne pas compter les messages supprimés
+    });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Compter le nombre de messages dans un forum spécifique
+exports.countForumMessages = async (req, res) => {
+  try {
+    const { forumId } = req.params;
+    const count = await Message.countDocuments({ 
+      forum: forumId,
+      parentMessage: null, // Seulement les messages principaux (pas les réponses)
+      isDeleted: { $ne: true } // Ne pas compter les messages supprimés
+    });
+    
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

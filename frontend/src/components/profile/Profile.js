@@ -14,29 +14,61 @@ const Profile = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('ID du profil demandé:', id);
+    console.log('Utilisateur actuel:', currentUser);
+    
     const fetchProfileData = async () => {
       try {
         setLoading(true);
         
         // Récupérer les informations du profil
-        const profileRes = await axios.get(`http://localhost:5000/api/users/profile/${id}`, { withCredentials: true });
+        console.log('Envoi requête pour profil:', `http://localhost:5000/api/users/profile/${id}`);
+        const profileRes = await axios.get(`http://localhost:5000/api/users/profile/${id}`, { 
+          withCredentials: true,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }).catch(err => {
+          console.error('Erreur réponse profil:', err.response?.data || err.message);
+          throw err;
+        });
+        
+        console.log('Réponse profil:', profileRes.data);
         setProfile(profileRes.data);
         
         // Récupérer les messages de l'utilisateur
-        const messagesRes = await axios.get(`http://localhost:5000/api/messages/user/${id}`, { withCredentials: true });
-        setMessages(messagesRes.data);
+        const messagesRes = await axios.get(`http://localhost:5000/api/messages/user/${id}`, { 
+          withCredentials: true,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }).catch(err => {
+          console.warn('Erreur récupération messages:', err.response?.data || err.message);
+          // On continue même si les messages ne sont pas récupérés
+          return { data: [] };
+        });
         
+        setMessages(messagesRes.data);
         setError('');
       } catch (err) {
         console.error('Erreur lors du chargement du profil:', err);
-        setError(err.response?.data?.message || 'Erreur lors du chargement du profil');
+        if (err.response?.status === 404) {
+          setError(`Utilisateur avec l'ID ${id} non trouvé.`);
+        } else {
+          setError(err.response?.data?.message || 'Erreur lors du chargement du profil');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfileData();
-  }, [id]);
+    if (id) {
+      fetchProfileData();
+    } else {
+      setError('ID utilisateur manquant');
+      setLoading(false);
+    }
+  }, [id, currentUser]);
 
   if (loading) {
     return (
