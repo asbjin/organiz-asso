@@ -1,0 +1,28 @@
+{
+  "name": "organiz-asso",
+  "version": "1.0.0",
+  "description": "Plateforme d'échange de messages pour une association",
+  "main": "index.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server.js",
+    "client": "cd frontend && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "seed": "node backend/seed.js",
+    "install-all": "npm install && cd frontend && npm install"
+  },
+  "keywords": [
+    "association",
+    "forum",
+    "messages",
+    "mern"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
