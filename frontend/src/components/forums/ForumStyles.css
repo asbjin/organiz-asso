@@ -648,14 +648,13 @@
 
 /* Styles pour le bouton de suppression de forum */
 .delete-forum-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+  position: relative;
+  margin-left: 10px;
   background-color: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   opacity: 0.7;
@@ -663,6 +662,7 @@
   z-index: 10;
   padding: 0;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  color: #dc3545 !important;
 }
 
 .delete-forum-btn:hover {
@@ -670,4 +670,5 @@
   transform: scale(1.1);
   background-color: rgba(255, 255, 255, 1);
   box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
+  color: #c82333 !important;
 } 

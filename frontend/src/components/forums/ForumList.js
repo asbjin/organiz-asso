@@ -314,6 +314,17 @@ const ForumList = () => {
                           {forum.type === 'closed' && (
                             <BsLock className="forum-lock-icon" title="Forum privé" />
                           )}
+                          {(currentUser && (currentUser.role === 'admin' || isForumCreator(forum))) && (
+                            <Button 
+                              variant="link" 
+                              className="delete-forum-btn text-danger"
+                              onClick={(e) => handleDeleteForum(forum._id, e)}
+                              disabled={deletingForum === forum._id}
+                              title="Supprimer ce forum"
+                            >
+                              <BsTrash size={20} />
+                            </Button>
+                          )}
                         </h3>
                         <p className="forum-description">{forum.description}</p>
                         
@@ -334,17 +345,6 @@ const ForumList = () => {
                         </div>
                       </div>
                       <div className="forum-action">
-                        {(currentUser && (currentUser.role === 'admin' || isForumCreator(forum))) && (
-                          <Button 
-                            variant="link" 
-                            className="delete-forum-btn text-danger"
-                            onClick={(e) => handleDeleteForum(forum._id, e)}
-                            disabled={deletingForum === forum._id}
-                            title="Supprimer ce forum"
-                          >
-                            <BsTrash size={20} />
-                          </Button>
-                        )}
                         <BsArrowUpRightCircle size={24} />
                       </div>
                     </div>
