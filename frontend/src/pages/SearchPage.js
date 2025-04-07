@@ -13,7 +13,7 @@ import '../components/forums/SearchStyles.css';
  * Page de recherche de style LinkedIn
  */
 const SearchPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentUser } = useAuth();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +29,96 @@ const SearchPage = () => {
   // Récupérer les résultats du state Redux
   const { messages, loading, error } = useSelector(state => state.messages);
   
+  // Fonction pour effectuer la recherche
+  const performSearch = (query, type) => {
+    if (!query || query.trim() === '') {
+      return;
+    }
+    
+    setIsLoading(true);
+    console.log(`Début recherche: ${type} pour "${query}"`);
+    
+    if (type === 'messages') {
+      // Recherche de messages
+      console.log('Envoi de la requête de recherche de messages');
+      dispatch(searchMessages({
+        keywords: query,
+        sortBy: 'relevance',
+        sortOrder: 'desc'
+      }))
+      .then((data) => {
+        console.log('Résultats messages reçus:', data?.length || 0);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error('Erreur dans la recherche de messages:', err);
+        setIsLoading(false);
+      });
+    } else if (type === 'users') {
+      // Recherche d'utilisateurs
+      const token = localStorage.getItem('authToken');
+      const url = `http://localhost:5000/api/users/test-search?q=${encodeURIComponent(query)}`;
+      console.log('Envoi de requête utilisateurs:', url);
+      
+      axios.get(url)
+      .then(response => {
+        console.log('Résultats utilisateurs reçus:', response.data?.length || 0);
+        setUserResults(response.data);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Erreur lors de la recherche d\'utilisateurs:', error.response?.data || error.message);
+        setUserResults([]);
+        setIsLoading(false);
+      });
+    } else if (type === 'forums') {
+      // Recherche de forums
+      const token = localStorage.getItem('authToken');
+      // Vérifier si l'utilisateur est admin pour choisir la route appropriée
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const endpoint = isAdmin ? 'admin-search' : 'test-search';
+      const url = `http://localhost:5000/api/forums/${endpoint}?q=${encodeURIComponent(query)}`;
+      
+      console.log(`Envoi de requête forums (${isAdmin ? 'admin' : 'standard'}) sur "${query}" via ${endpoint}`);
+      
+      axios.get(url, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      })
+      .then(response => {
+        console.log('Résultats forums reçus:', response.data?.length || 0, response.data);
+        setForumResults(response.data);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Erreur lors de la recherche de forums:', error.response?.data || error.message);
+        // Essayer la route de test en dernier recours
+        if (endpoint !== 'test-search') {
+          console.log('Tentative via route de test');
+          const testUrl = `http://localhost:5000/api/forums/test-search?q=${encodeURIComponent(query)}`;
+          
+          axios.get(testUrl)
+            .then(response => {
+              console.log('Résultats forums reçus (fallback):', response.data?.length || 0);
+              setForumResults(response.data);
+              setIsLoading(false);
+            })
+            .catch(testError => {
+              console.error('Échec de la recherche de forums:', testError.message);
+              setForumResults([]);
+              setIsLoading(false);
+            });
+        } else {
+          setForumResults([]);
+          setIsLoading(false);
+        }
+      });
+    }
+  };
+  
   // Effet pour exécuter la recherche lors du chargement ou changement de URL
   useEffect(() => {
     const query = searchParams.get('q');
@@ -42,56 +132,6 @@ const SearchPage = () => {
     // Effectuer la recherche en fonction du type
     performSearch(query, type);
   }, [location.search]);
-  
-  // Fonction pour effectuer la recherche
-  const performSearch = (query, type) => {
-    setIsLoading(true);
-    
-    if (type === 'messages') {
-      // Recherche de messages
-      dispatch(searchMessages({
-        keywords: query,
-        sortBy: 'relevance',
-        sortOrder: 'desc'
-      }))
-      .then(() => {
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-    } else if (type === 'users') {
-      // Recherche d'utilisateurs
-      const token = localStorage.getItem('token');
-      axios.get(`/api/users/search?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(response => {
-        setUserResults(response.data);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Erreur lors de la recherche d\'utilisateurs:', error);
-        setUserResults([]);
-        setIsLoading(false);
-      });
-    } else if (type === 'forums') {
-      // Recherche de forums
-      const token = localStorage.getItem('token');
-      axios.get(`/api/forums/search?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(response => {
-        setForumResults(response.data);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Erreur lors de la recherche de forums:', error);
-        setForumResults([]);
-        setIsLoading(false);
-      });
-    }
-  };
   
   // Fonction pour changer le type de recherche
   const handleTypeChange = (type) => {
@@ -154,7 +194,7 @@ const SearchPage = () => {
         <div>
           <h5 className="mb-1">{forum.name}</h5>
           <p className="text-muted mb-0">
-            {forum.type === 'public' ? 'Forum public' : 'Forum privé'}
+            {forum.type === 'closed' ? 'Forum privé' : 'Forum public'}
           </p>
           <small className="text-muted">{forum.description?.substring(0, 100)}...</small>
         </div>
@@ -218,7 +258,7 @@ const SearchPage = () => {
         </Nav>
         
         {/* Résultats de recherche */}
-        {searchQuery && (
+        {searchQuery && location.search.includes('q=') && (
           <div className="search-results">
             <h2 className="h5 mb-3">
               Résultats pour "{searchQuery}" dans {searchType === 'messages' ? 'les messages' : 
@@ -272,7 +312,7 @@ const SearchPage = () => {
         
         {error && (
           <div className="alert alert-danger" role="alert">
-            Une erreur est survenue lors de la recherche: {error}
+            Une erreur est survenue lors de la recherche: {error.msg || error.message || JSON.stringify(error)}
           </div>
         )}
       </div>
