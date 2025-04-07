@@ -4,7 +4,7 @@ import { Container, Card, Button, Spinner, Alert, Modal, Form, Badge } from 'rea
 import { Link } from 'react-router-dom';
 import { getForums, getForumMessageCount } from '../../services/forumService';
 import { useAuth } from '../../contexts/AuthContext';
-import { BsChat, BsCalendar3, BsPeople, BsArrowUpRightCircle, BsLock, BsPlus } from 'react-icons/bs';
+import { BsChat, BsCalendar3, BsPeople, BsArrowUpRightCircle, BsLock, BsPlus, BsTrash } from 'react-icons/bs';
 import axios from 'axios';
 import './ForumStyles.css';
 
@@ -22,6 +22,7 @@ const ForumList = () => {
   const [newForumType, setNewForumType] = useState('open');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [deletingForum, setDeletingForum] = useState(null);
 
   useEffect(() => {
     // On n'essaie de charger les forums que si l'authentification est terminée
@@ -89,6 +90,10 @@ const ForumList = () => {
         })
       );
       
+      // Ajouter un log pour voir les forums et leurs créateurs
+      console.log('Forums chargés:', forumsWithMessageCount);
+      console.log('Utilisateur actuel:', currentUser);
+      
       setForums(forumsWithMessageCount);
     } catch (err) {
       console.error('Erreur lors du chargement des forums:', err);
@@ -149,6 +154,28 @@ const ForumList = () => {
     }
   };
 
+  // Fonction pour supprimer un forum
+  const handleDeleteForum = async (forumId, e) => {
+    e.preventDefault(); // Empêcher la navigation vers le forum
+    e.stopPropagation(); // Empêcher le clic de se propager
+
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce forum et tous ses messages ?')) {
+      return;
+    }
+
+    try {
+      setDeletingForum(forumId);
+      await axios.delete(`http://localhost:5000/api/forums/${forumId}`, { withCredentials: true });
+      // Mettre à jour la liste des forums après suppression
+      fetchForums();
+    } catch (err) {
+      console.error('Erreur lors de la suppression du forum:', err);
+      alert(err.response?.data?.message || 'Erreur lors de la suppression du forum');
+    } finally {
+      setDeletingForum(null);
+    }
+  };
+
   const getSortedForums = () => {
     if (!forums) return [];
     
@@ -161,6 +188,14 @@ const ForumList = () => {
       default:
         return [...forums].sort((a, b) => new Date(b.lastActivity || b.createdAt) - new Date(a.lastActivity || a.createdAt));
     }
+  };
+
+  // Fonction pour vérifier si l'utilisateur est le créateur du forum
+  const isForumCreator = (forum) => {
+    if (!currentUser || !forum || !forum.createdBy) return false;
+    
+    // Comparer les IDs en tant que strings pour éviter les problèmes de comparaison d'objets
+    return forum.createdBy.toString() === currentUser.id.toString();
   };
 
   if (authLoading) {
@@ -299,6 +334,17 @@ const ForumList = () => {
                         </div>
                       </div>
                       <div className="forum-action">
+                        {(currentUser && (currentUser.role === 'admin' || isForumCreator(forum))) && (
+                          <Button 
+                            variant="link" 
+                            className="delete-forum-btn text-danger"
+                            onClick={(e) => handleDeleteForum(forum._id, e)}
+                            disabled={deletingForum === forum._id}
+                            title="Supprimer ce forum"
+                          >
+                            <BsTrash size={20} />
+                          </Button>
+                        )}
                         <BsArrowUpRightCircle size={24} />
                       </div>
                     </div>

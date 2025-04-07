@@ -49,6 +49,8 @@ router.post('/', isAuthenticated, forumController.createForum);
 
 // Routes protégées pour les administrateurs
 router.put('/:id', isAuthenticated, isAdmin, forumController.updateForum);
-router.delete('/:id', isAuthenticated, isAdmin, forumController.deleteForum);
+
+// Route de suppression - accessible pour les admins ET les auteurs du forum
+router.delete('/:id', isAuthenticated, forumController.deleteForum);
 
 module.exports = router;

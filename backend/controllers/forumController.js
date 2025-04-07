@@ -48,8 +48,9 @@ exports.getAllForums = async (req, res) => {
       
       // Pour l'admin d'urgence, nous ne pouvons pas utiliser populate
       // alors nous ajoutons manuellement l'information de l'auteur
-      forumObj.createdBy = {
-        _id: forumObj.createdBy,
+      forumObj.createdBy = forum.createdBy; // Garder l'ID du créateur
+      forumObj.creator = {
+        _id: forum.createdBy,
         username: 'Administrateur'
       };
       
@@ -136,15 +137,23 @@ exports.updateForum = async (req, res) => {
   }
 };
 
-// Supprimer un forum (admin uniquement)
+// Supprimer un forum (admin uniquement ou créateur du forum)
 exports.deleteForum = async (req, res) => {
   try {
-    // Supprimer le forum
-    const deletedForum = await Forum.findByIdAndDelete(req.params.id);
+    // Récupérer le forum
+    const forum = await Forum.findById(req.params.id);
     
-    if (!deletedForum) {
+    if (!forum) {
       return res.status(404).json({ message: 'Forum non trouvé.' });
     }
+    
+    // Vérifier si l'utilisateur est admin ou le créateur du forum
+    if (req.user.role !== 'admin' && forum.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Vous n\'avez pas les droits nécessaires pour supprimer ce forum.' });
+    }
+    
+    // Supprimer le forum
+    const deletedForum = await Forum.findByIdAndDelete(req.params.id);
     
     // Supprimer tous les messages associés à ce forum
     await Message.deleteMany({ forum: req.params.id });

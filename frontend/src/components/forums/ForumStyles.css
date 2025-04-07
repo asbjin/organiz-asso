@@ -214,6 +214,7 @@
   color: var(--primary-color);
   opacity: 0.8;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .forum-card:hover .forum-action {
@@ -643,4 +644,30 @@
 .reply-form textarea:focus {
   border-color: #4a89dc;
   box-shadow: none;
+}
+
+/* Styles pour le bouton de suppression de forum */
+.delete-forum-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  z-index: 10;
+  padding: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.delete-forum-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  background-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
 } 
