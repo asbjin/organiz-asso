@@ -22,6 +22,7 @@ import EditProfile from './components/profile/EditProfile';
 import AdminDashboard from './components/admin/AdminDashboard';
 import PendingUsers from './components/admin/PendingUsers';
 import ManageForums from './components/admin/ManageForums';
+import SearchPage from './pages/SearchPage';
 
 // Composant de chargement
 const LoadingComponent = () => (
@@ -82,6 +83,14 @@ function App() {
                 <EditProfile />
               </ProtectedRoute>
             } 
+          />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchPage />
+              </ProtectedRoute>
+            }
           />
           
           {/* Routes protégées pour les administrateurs */}

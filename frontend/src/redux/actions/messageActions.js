@@ -245,36 +245,47 @@ export const searchMessages = (searchParams) => async (dispatch) => {
     dispatch({ type: SET_LOADING, payload: 'searchMessages' });
     dispatch({ type: CLEAR_ERROR });
 
-    // Construire l'URL avec les paramètres de recherche
-    let searchUrl = `${API_URL}/messages/search?`;
+    // Construire les paramètres de requête
+    const params = new URLSearchParams();
     
+    // Paramètres de base
     if (searchParams.keywords) {
-      searchUrl += `keywords=${encodeURIComponent(searchParams.keywords)}&`;
+      params.append('keyword', searchParams.keywords);
     }
     
     if (searchParams.author) {
-      searchUrl += `author=${encodeURIComponent(searchParams.author)}&`;
+      params.append('author', searchParams.author);
     }
     
-    if (searchParams.forum) {
-      searchUrl += `forum=${encodeURIComponent(searchParams.forum)}&`;
+    if (searchParams.forumId) {
+      params.append('forumId', searchParams.forumId);
     }
     
     if (searchParams.startDate) {
-      searchUrl += `startDate=${encodeURIComponent(searchParams.startDate)}&`;
+      params.append('startDate', searchParams.startDate);
     }
     
     if (searchParams.endDate) {
-      searchUrl += `endDate=${encodeURIComponent(searchParams.endDate)}&`;
+      params.append('endDate', searchParams.endDate);
     }
     
+    // Paramètres de tri
     if (searchParams.sortBy) {
-      searchUrl += `sortBy=${encodeURIComponent(searchParams.sortBy)}&`;
+      params.append('sortBy', searchParams.sortBy);
     }
     
     if (searchParams.sortOrder) {
-      searchUrl += `sortOrder=${encodeURIComponent(searchParams.sortOrder)}&`;
+      params.append('sortOrder', searchParams.sortOrder);
     }
+    
+    // Mode de recherche (oneWord, allWords, exactPhrase)
+    if (searchParams.searchMode) {
+      params.append('searchMode', searchParams.searchMode);
+    }
+    
+    // Construire l'URL avec les paramètres
+    const searchUrl = `${API_URL}/messages/search?${params.toString()}`;
+    console.log('URL de recherche:', searchUrl);
 
     const res = await axios.get(searchUrl);
 
@@ -286,6 +297,8 @@ export const searchMessages = (searchParams) => async (dispatch) => {
     dispatch({ type: CLEAR_LOADING });
     return res.data;
   } catch (err) {
+    console.error('Erreur lors de la recherche:', err);
+    
     dispatch({
       type: MESSAGE_ERROR,
       payload: {

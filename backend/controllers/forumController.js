@@ -151,3 +151,33 @@ exports.deleteForum = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.', error: error.message });
   }
 };
+
+// Autocomplete pour les noms de forums
+exports.autocompleteForums = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(400).json({ message: 'La requête doit contenir au moins 2 caractères' });
+    }
+    
+    // Recherche des forums dont le nom contient la requête
+    let query = {
+      name: { $regex: q, $options: 'i' }
+    };
+    
+    // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
+    if (req.user.role !== 'admin') {
+      query.type = { $ne: 'closed' };
+    }
+    
+    const forums = await Forum.find(query)
+      .select('name type description')
+      .limit(10);
+    
+    res.status(200).json(forums);
+  } catch (error) {
+    console.error('Erreur lors de l\'autocomplétion des forums:', error);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};

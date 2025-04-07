@@ -12,4 +12,7 @@ router.post('/', isAuthenticated, isAdmin, forumController.createForum);
 router.put('/:id', isAuthenticated, isAdmin, forumController.updateForum);
 router.delete('/:id', isAuthenticated, isAdmin, forumController.deleteForum);
 
+// Route pour l'autocomplétion des noms de forums
+router.get('/autocomplete', isAuthenticated, forumController.autocompleteForums);
+
 module.exports = router;

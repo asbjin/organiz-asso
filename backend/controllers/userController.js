@@ -174,3 +174,27 @@ exports.getProfileById = async (req, res) => {
     });
   }
 };
+
+// Autocomplete pour les noms d'utilisateurs
+exports.autocompleteUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(400).json({ message: 'La requête doit contenir au moins 2 caractères' });
+    }
+    
+    // Recherche des utilisateurs dont le nom contient la requête
+    const users = await User.find({
+      username: { $regex: q, $options: 'i' },
+      status: 'approved' // Seulement les utilisateurs approuvés
+    })
+    .select('username profilePicture')
+    .limit(10);
+    
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Erreur lors de l\'autocomplétion des utilisateurs:', error);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};

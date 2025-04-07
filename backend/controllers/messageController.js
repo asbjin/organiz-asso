@@ -463,14 +463,41 @@ exports.deleteMessageCascade = async (req, res) => {
 // Rechercher des messages
 exports.searchMessages = async (req, res) => {
   try {
-    const { keyword, author, startDate, endDate, forumId } = req.query;
+    const { 
+      keyword, 
+      author, 
+      startDate, 
+      endDate, 
+      forumId, 
+      sortBy = 'date', 
+      sortOrder = 'desc',
+      searchMode = 'oneWord'
+    } = req.query;
+    
+    console.log('Recherche avec paramètres:', req.query);
     
     // Construire la requête de recherche
-    const query = {};
+    const query = { isDeleted: { $ne: true } };
     
-    // Filtrer par mot-clé
+    // Filtrer par mot-clé avec différents modes de recherche
     if (keyword) {
-      query.$text = { $search: keyword };
+      if (searchMode === 'exactPhrase') {
+        // Recherche de phrase exacte
+        query.$text = { $search: `"${keyword}"` };
+      } else if (searchMode === 'allWords') {
+        // Tous les mots doivent être présents (AND)
+        const words = keyword.split(/\s+/).filter(Boolean);
+        if (words.length > 0) {
+          query.$text = { $search: words.join(' ') };
+          // Nous devons vérifier que tous les mots sont présents
+          query.$text.$language = 'french';
+          query.$text.$caseSensitive = false;
+          query.$text.$diacriticSensitive = false;
+        }
+      } else {
+        // Un des mots suffit (OR) - mode par défaut
+        query.$text = { $search: keyword };
+      }
     }
     
     // Filtrer par auteur
@@ -487,7 +514,10 @@ exports.searchMessages = async (req, res) => {
         query.createdAt.$gte = new Date(startDate);
       }
       if (endDate) {
-        query.createdAt.$lte = new Date(endDate);
+        // Ajouter 1 jour pour inclure tout le jour de fin
+        const endDateObj = new Date(endDate);
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        query.createdAt.$lte = endDateObj;
       }
     }
     
@@ -512,15 +542,69 @@ exports.searchMessages = async (req, res) => {
       }
     }
     
+    // Déterminer le tri
+    let sortOptions = {};
+    
+    switch (sortBy) {
+      case 'author':
+        // Pour trier par auteur, nous devons d'abord récupérer les messages puis trier
+        sortOptions = {}; // On triera manuellement après la requête
+        break;
+      case 'relevance':
+        if (keyword) {
+          sortOptions = { score: { $meta: 'textScore' } };
+        } else {
+          sortOptions = { createdAt: -1 }; // Tri par date si pas de mot-clé
+        }
+        break;
+      case 'likes':
+        sortOptions = { likesCount: sortOrder === 'desc' ? -1 : 1 };
+        break;
+      case 'date':
+      default:
+        sortOptions = { createdAt: sortOrder === 'desc' ? -1 : 1 };
+    }
+    
+    // Ajouter un second critère de tri par date pour garantir un ordre stable
+    if (sortBy !== 'date') {
+      sortOptions.createdAt = sortOrder === 'desc' ? -1 : 1;
+    }
+    
     // Exécuter la recherche
-    const messages = await Message.find(query)
-      .populate('author', 'username profilePicture')
-      .populate('forum', 'name')
-      .sort({ createdAt: -1 });
+    let messages;
+    
+    if (keyword && sortBy === 'relevance') {
+      // Si on cherche par pertinence avec des mots-clés, on ajoute le score de pertinence
+      messages = await Message.find(query, { score: { $meta: 'textScore' } })
+        .populate('author', 'username profilePicture')
+        .populate('forum', 'name')
+        .sort(sortOptions)
+        .limit(100);
+    } else {
+      messages = await Message.find(query)
+        .populate('author', 'username profilePicture')
+        .populate('forum', 'name')
+        .sort(sortOptions)
+        .limit(100);
+    }
+    
+    // Si le tri est par auteur, on doit le faire manuellement après avoir récupéré les données
+    if (sortBy === 'author') {
+      messages.sort((a, b) => {
+        const usernameA = a.author?.username?.toLowerCase() || '';
+        const usernameB = b.author?.username?.toLowerCase() || '';
+        return sortOrder === 'desc' 
+          ? usernameB.localeCompare(usernameA, 'fr')
+          : usernameA.localeCompare(usernameB, 'fr');
+      });
+    }
+    
+    console.log(`Recherche terminée: ${messages.length} résultats trouvés`);
     
     res.status(200).json(messages);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    console.error('Erreur dans la recherche de messages:', error);
+    res.status(500).json({ message: 'Erreur serveur lors de la recherche.', error: error.message });
   }
 };
 
