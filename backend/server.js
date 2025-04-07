@@ -84,12 +84,14 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const forumRoutes = require('./routes/forums');
 const messageRoutes = require('./routes/messages');
+const chatRoutes = require('./routes/chat');
 
 // Utilisation des routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/forums', forumRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Configuration des WebSockets
 io.on('connection', (socket) => {
@@ -97,6 +99,18 @@ io.on('connection', (socket) => {
   
   // Stocker les messages récemment envoyés pour éviter les doublons
   const recentMessageIds = new Set();
+  
+  // Authentification du socket
+  socket.on('authenticate', (userData) => {
+    if (userData && userData.userId) {
+      socket.userId = userData.userId;
+      socket.username = userData.username;
+      console.log(`Socket authentifié pour l'utilisateur: ${userData.username} (${userData.userId})`);
+      
+      // Rejoindre un canal privé pour cet utilisateur
+      socket.join(`user:${userData.userId}`);
+    }
+  });
   
   // Événement pour rejoindre un forum
   socket.on('join_forum', (forumId) => {
@@ -147,6 +161,55 @@ io.on('connection', (socket) => {
     
     // Diffuser le message uniquement aux autres clients dans le même forum
     socket.to(messageData.forumId).emit('receive_message', messageData);
+  });
+  
+  // Chat privé - Envoyer un message à un utilisateur
+  socket.on('private_message', (data) => {
+    if (!socket.userId) {
+      socket.emit('error', { message: 'Vous devez être authentifié pour envoyer des messages.' });
+      return;
+    }
+    
+    if (!data.receiverId || !data.content) {
+      socket.emit('error', { message: 'Données de message incomplètes.' });
+      return;
+    }
+    
+    const messageId = data.messageId || `temp-${Date.now()}`;
+    
+    // Si le message a déjà été traité récemment, l'ignorer
+    if (recentMessageIds.has(messageId)) {
+      console.log(`Message privé ignoré (doublon): ${messageId}`);
+      return;
+    }
+    
+    // Ajouter l'ID à l'ensemble des messages récents
+    recentMessageIds.add(messageId);
+    
+    console.log(`Message privé de ${socket.username} à ${data.receiverId}, ID: ${messageId}`);
+    
+    // Émettre le message au destinataire s'il est connecté
+    io.to(`user:${data.receiverId}`).emit('private_message', {
+      ...data,
+      senderId: socket.userId,
+      senderUsername: socket.username,
+      timestamp: new Date(),
+      messageId
+    });
+    
+    // Confirmer l'envoi à l'expéditeur
+    socket.emit('message_sent', { messageId, status: 'sent' });
+  });
+  
+  // Événement quand un utilisateur est en train d'écrire
+  socket.on('typing', (data) => {
+    if (!socket.userId || !data.receiverId) return;
+    
+    io.to(`user:${data.receiverId}`).emit('user_typing', {
+      userId: socket.userId,
+      username: socket.username,
+      isTyping: data.isTyping
+    });
   });
   
   // Événement de déconnexion
