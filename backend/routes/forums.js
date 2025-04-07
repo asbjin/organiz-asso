@@ -9,6 +9,9 @@ router.get('/', isAuthenticated, forumController.getAllForums);
 // Route pour l'autocomplétion des noms de forums
 router.get('/autocomplete', isAuthenticated, forumController.searchForumsByName);
 
+// Route pour obtenir le nombre de messages d'un forum
+router.get('/count/:id', isAuthenticated, forumController.getForumMessageCount);
+
 // Route de test sans authentification pour la recherche
 // Cette route capture les informations d'authentification si disponibles
 // mais ne bloque pas les requêtes non authentifiées

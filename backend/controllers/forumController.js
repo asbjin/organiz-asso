@@ -275,3 +275,51 @@ exports.searchAllForums = async (req, res) => {
     });
   }
 };
+
+// Recherche de forums par nom (pour l'autocomplétion)
+exports.searchForumsByName = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.status(400).json({ message: 'La requête doit contenir au moins 2 caractères' });
+    }
+    
+    // Recherche des forums dont le nom contient la requête
+    let query = {
+      name: { $regex: q, $options: 'i' }
+    };
+    
+    // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
+    if (req.user.role !== 'admin') {
+      query.type = { $ne: 'closed' };
+    }
+    
+    const forums = await Forum.find(query)
+      .select('name type description')
+      .limit(10);
+    
+    res.status(200).json(forums);
+  } catch (error) {
+    console.error('Erreur lors de la recherche des forums par nom:', error);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// Obtenir le nombre de messages d'un forum
+exports.getForumMessageCount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ message: 'ID du forum requis.' });
+    }
+    
+    const count = await Message.countDocuments({ forum: id });
+    
+    res.status(200).json(count);
+  } catch (error) {
+    console.error('Erreur lors du comptage des messages:', error);
+    res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+  }
+};
