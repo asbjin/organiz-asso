@@ -39,7 +39,7 @@ exports.getUserById = async (req, res) => {
 // Mettre à jour le profil d'un utilisateur
 exports.updateUser = async (req, res) => {
   try {
-    const { username, email, bio, profilePicture } = req.body;
+    const { username, email, bio } = req.body;
     
     // Vérifier si l'utilisateur est autorisé à modifier ce profil
     if (req.user.role !== 'admin' && req.user._id.toString() !== req.params.id) {
@@ -70,8 +70,7 @@ exports.updateUser = async (req, res) => {
         $set: {
           ...(username && { username }),
           ...(email && { email }),
-          ...(bio && { bio }),
-          ...(profilePicture && { profilePicture })
+          ...(bio && { bio })
         }
       },
       { new: true }
@@ -189,7 +188,7 @@ exports.autocompleteUsers = async (req, res) => {
       username: { $regex: q, $options: 'i' },
       status: 'approved' // Seulement les utilisateurs approuvés
     })
-    .select('username profilePicture')
+    .select('username')
     .limit(10);
     
     res.status(200).json(users);
@@ -220,7 +219,7 @@ exports.searchUsers = async (req, res) => {
     
     try {
       const users = await User.find(query)
-        .select('username profilePicture role createdAt')
+        .select('username role createdAt')
         .limit(20);
       
       console.log(`${users.length} utilisateurs trouvés`);
