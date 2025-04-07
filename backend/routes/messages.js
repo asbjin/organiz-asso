@@ -13,6 +13,9 @@ router.get('/search', isAuthenticated, messageController.searchMessages);
 router.get('/count', isAuthenticated, messageController.countMessages);
 router.get('/forum/:forumId/count', isAuthenticated, messageController.countForumMessages);
 
+// Route de test sans authentification pour la recherche
+router.get('/test-search', messageController.searchMessages);
+
 // Route pour la suppression en cascade d'un message et ses réponses
 router.delete('/:id/cascade', isAuthenticated, messageController.deleteMessageCascade);
 

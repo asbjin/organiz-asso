@@ -203,20 +203,36 @@ exports.autocompleteUsers = async (req, res) => {
 exports.searchUsers = async (req, res) => {
   try {
     const { q } = req.query;
+    console.log(`Recherche d'utilisateurs pour: "${q}"`);
     
     if (!q || q.trim() === '') {
+      console.log('Recherche vide, retour tableau vide');
       return res.status(200).json([]);
     }
     
     // Recherche d'utilisateurs par nom d'utilisateur
-    const users = await User.find({
+    const query = {
       username: { $regex: q, $options: 'i' },
-      status: 'approved' // Seulement les utilisateurs approuvés
-    })
-    .select('username profilePicture role createdAt')
-    .limit(20);
+      status: 'active' // Seulement les utilisateurs actifs
+    };
     
-    res.status(200).json(users);
+    console.log('Requête de recherche:', JSON.stringify(query));
+    
+    try {
+      const users = await User.find(query)
+        .select('username profilePicture role createdAt')
+        .limit(20);
+      
+      console.log(`${users.length} utilisateurs trouvés`);
+      res.status(200).json(users);
+    } catch (findError) {
+      console.error('Erreur lors de la recherche dans la base de données:', findError);
+      return res.status(500).json({ 
+        message: 'Erreur de base de données.', 
+        error: findError.message,
+        results: []
+      });
+    }
   } catch (error) {
     console.error('Erreur lors de la recherche d\'utilisateurs:', error);
     res.status(500).json({ 

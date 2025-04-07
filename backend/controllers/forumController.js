@@ -186,8 +186,12 @@ exports.autocompleteForums = async (req, res) => {
 exports.searchForums = async (req, res) => {
   try {
     const { q } = req.query;
+    console.log(`Recherche de forums pour: "${q}"`);
+    console.log('Headers de la requête:', req.headers);
+    console.log('User info:', req.user ? `ID: ${req.user._id}, Role: ${req.user.role}` : 'Non authentifié');
     
     if (!q || q.trim() === '') {
+      console.log('Recherche vide, retour tableau vide');
       return res.status(200).json([]);
     }
     
@@ -199,20 +203,66 @@ exports.searchForums = async (req, res) => {
       ]
     };
     
-    // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
-    if (req.user.role !== 'admin') {
+    // Si l'utilisateur n'est pas administrateur ou n'est pas authentifié, exclure les forums fermés
+    const isAdmin = req.user && req.user.role === 'admin';
+    if (!isAdmin) {
       query.type = { $ne: 'closed' };
+      console.log('Utilisateur non admin, exclusion des forums privés');
+    } else {
+      console.log('Utilisateur admin, inclusion des forums privés');
     }
+    
+    console.log('Requête de recherche:', JSON.stringify(query));
     
     // Recherche de forums
     const forums = await Forum.find(query)
       .select('name description type createdAt lastActivity')
-      .populate('createdBy', 'username')
       .limit(20);
     
+    console.log(`${forums.length} forums trouvés:`, forums.map(f => f.name).join(', '));
     res.status(200).json(forums);
   } catch (error) {
     console.error('Erreur lors de la recherche de forums:', error);
+    res.status(500).json({ 
+      message: 'Erreur serveur lors de la recherche.', 
+      error: error.message,
+      results: [] // Toujours renvoyer un tableau vide en cas d'erreur
+    });
+  }
+};
+
+// Rechercher tous les forums (pour admins seulement)
+exports.searchAllForums = async (req, res) => {
+  try {
+    const { q } = req.query;
+    console.log(`Recherche de tous les forums (admin) pour: "${q}"`);
+    console.log('Headers de la requête admin:', req.headers);
+    console.log('User admin info:', req.user ? `ID: ${req.user._id}, Role: ${req.user.role}` : 'Non authentifié');
+    
+    if (!q || q.trim() === '') {
+      console.log('Recherche vide, retour tableau vide');
+      return res.status(200).json([]);
+    }
+    
+    // Construire la requête de recherche SANS filtrer par type
+    let query = {
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } }
+      ]
+    };
+    
+    console.log('Requête de recherche admin:', JSON.stringify(query));
+    
+    // Recherche de tous les forums sans filtrer par type
+    const forums = await Forum.find(query)
+      .select('name description type createdAt lastActivity')
+      .limit(20);
+    
+    console.log(`${forums.length} forums trouvés pour admin:`, forums.map(f => f.name).join(', '));
+    res.status(200).json(forums);
+  } catch (error) {
+    console.error('Erreur lors de la recherche de forums (admin):', error);
     res.status(500).json({ 
       message: 'Erreur serveur lors de la recherche.', 
       error: error.message,

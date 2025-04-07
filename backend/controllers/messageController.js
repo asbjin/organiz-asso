@@ -474,7 +474,7 @@ exports.searchMessages = async (req, res) => {
       searchMode = 'oneWord'
     } = req.query;
     
-    console.log('Recherche avec paramètres:', req.query);
+    console.log('Recherche de messages avec paramètres:', req.query);
     
     // Construire la requête de recherche
     const query = { isDeleted: { $ne: true } };
@@ -485,6 +485,7 @@ exports.searchMessages = async (req, res) => {
         if (searchMode === 'exactPhrase') {
           // Recherche de phrase exacte
           query.$text = { $search: `"${keyword}"` };
+          console.log('Mode de recherche: phrase exacte');
         } else if (searchMode === 'allWords') {
           // Tous les mots doivent être présents (AND)
           const words = keyword.split(/\s+/).filter(Boolean);
@@ -494,10 +495,12 @@ exports.searchMessages = async (req, res) => {
             query.$text.$language = 'french';
             query.$text.$caseSensitive = false;
             query.$text.$diacriticSensitive = false;
+            console.log('Mode de recherche: tous les mots - ', words.join(' '));
           }
         } else {
           // Un des mots suffit (OR) - mode par défaut
           query.$text = { $search: keyword };
+          console.log('Mode de recherche: un mot suffit');
         }
       } catch (textSearchError) {
         console.error('Erreur dans la construction de la recherche textuelle:', textSearchError);
@@ -563,7 +566,7 @@ exports.searchMessages = async (req, res) => {
       }
     } else {
       // Si aucun forum n'est spécifié, exclure les messages des forums fermés pour les non-admins
-      if (req.user.role !== 'admin') {
+      if (!req.user || req.user.role !== 'admin') {
         try {
           const closedForums = await Forum.find({ type: 'closed' }).select('_id');
           if (closedForums && closedForums.length > 0) {

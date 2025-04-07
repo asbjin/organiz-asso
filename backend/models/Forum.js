@@ -30,4 +30,11 @@ const ForumSchema = new mongoose.Schema({
   }
 });
 
+// Ajouter des index texte pour la recherche
+ForumSchema.index({ name: 'text', description: 'text' });
+
+// Index régulier pour les recherches par nom
+ForumSchema.index({ name: 1 });
+ForumSchema.index({ type: 1 });
+
 module.exports = mongoose.model('Forum', ForumSchema);
