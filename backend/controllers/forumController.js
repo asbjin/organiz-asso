@@ -218,7 +218,7 @@ exports.searchForums = async (req, res) => {
     };
     
     // Si l'utilisateur n'est pas administrateur ou n'est pas authentifié, exclure les forums fermés
-    const isAdmin = req.user && req.user.role === 'admin';
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin');
     if (!isAdmin) {
       query.type = { $ne: 'closed' };
       console.log('Utilisateur non admin, exclusion des forums privés');

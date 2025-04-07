@@ -71,10 +71,23 @@ exports.isAdmin = (req, res, next) => {
     return res.status(401).json({ message: 'Utilisateur non authentifié.' });
   }
   
-  if (req.user.role === 'admin') {
+  if (req.user.role === 'admin' || req.user.role === 'superadmin') {
     next();
   } else {
     return res.status(403).json({ message: 'Accès refusé. Droits d\'administrateur requis.' });
+  }
+};
+
+// Middleware pour vérifier si l'utilisateur est super administrateur
+exports.isSuperAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Utilisateur non authentifié.' });
+  }
+  
+  if (req.user.role === 'superadmin') {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Accès refusé. Droits de super administrateur requis.' });
   }
 };
 
@@ -109,13 +122,9 @@ exports.isOwnerOrAdmin = (resourceModel) => {
           return res.status(404).json({ message: 'Ressource non trouvée.' });
         }
         
-        // Vérifier si l'utilisateur est le propriétaire ou un administrateur
-        const isOwner = (
-          (resource.author && resource.author.toString() === req.user._id.toString()) ||
-          (resource.createdBy && resource.createdBy.toString() === req.user._id.toString())
-        );
-        
-        const isAdmin = (req.user.role === 'admin');
+        // Vérifier si l'utilisateur est le propriétaire de la ressource ou un administrateur
+        const isOwner = resource.author && resource.author.toString() === req.user._id.toString();
+        const isAdmin = (req.user.role === 'admin' || req.user.role === 'superadmin');
         
         if (isOwner || isAdmin) {
           console.log(`Accès autorisé à ${resourceId} pour ${req.user._id} (${isOwner ? 'propriétaire' : 'admin'})`);

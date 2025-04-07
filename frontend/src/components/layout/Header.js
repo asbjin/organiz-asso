@@ -118,7 +118,7 @@ function Header() {
                     <BsChat className="nav-icon" />
                     <span className="nav-text">Forums</span>
                   </Nav.Link>
-                  {user && user.role === 'admin' && (
+                  {user && (user.role === 'admin' || user.role === 'superadmin') && (
                     <Nav.Link as={Link} to="/admin" className="nav-item">
                       <BsShieldCheck className="nav-icon" />
                       <span className="nav-text">Admin</span>

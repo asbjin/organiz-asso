@@ -567,7 +567,7 @@ const ForumDetail = () => {
                     <BsReply /> Répondre
                   </Button>
                   
-                  {(currentUser && currentUser.id === message.author?._id) || currentUser.role === 'admin' ? (
+                  {(currentUser && currentUser.id === message.author?._id) || currentUser.role === 'admin' || currentUser.role === 'superadmin' ? (
                     <>
                       <Button 
                         variant="link" 

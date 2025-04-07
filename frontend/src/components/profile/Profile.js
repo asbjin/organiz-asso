@@ -112,8 +112,16 @@ const Profile = () => {
               <p className="text-muted">{profile.email}</p>
               
               <div className="mb-3">
-                <Badge bg={profile.role === 'admin' ? 'danger' : 'primary'}>
-                  {profile.role === 'admin' ? 'Administrateur' : 'Membre'}
+                <Badge bg={
+                  profile.role === 'superadmin' ? 'danger' : 
+                  profile.role === 'admin' ? 'primary' : 
+                  'secondary'
+                }>
+                  {
+                    profile.role === 'superadmin' ? 'Super Administrateur' :
+                    profile.role === 'admin' ? 'Administrateur' : 
+                    'Membre'
+                  }
                 </Badge>
               </div>
               

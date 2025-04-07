@@ -35,9 +35,9 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
     return null;
   }
   
-  // Vérifier si l'utilisateur actuel est l'auteur du message
-  const isCurrentUserAuthor = currentUser && reply.author && 
-    (currentUser.id === reply.author._id || currentUser.role === 'admin');
+  // Vérifier si l'utilisateur est autorisé à modifier/supprimer
+  const canEditOrDelete = 
+    (currentUser.id === reply.author._id || currentUser.role === 'admin' || currentUser.role === 'superadmin');
 
   const handleReplyClick = () => {
     setShowReplyForm(!showReplyForm);
@@ -128,7 +128,7 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
           <BsReply /> Répondre
         </Button>
         
-        {isCurrentUserAuthor && (
+        {canEditOrDelete && (
           <>
             <Button 
               variant="link" 

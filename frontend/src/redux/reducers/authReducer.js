@@ -27,7 +27,7 @@ export default function authReducer(state = initialState, action) {
         isAuthenticated: true,
         loading: false,
         user: payload,
-        isAdmin: payload.role === 'admin',
+        isAdmin: payload.role === 'admin' || payload.role === 'superadmin',
       };
     case LOGIN_SUCCESS:
       localStorage.setItem('token', payload.token);

@@ -101,7 +101,7 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId })
             </div>
           </div>
           <div>
-            {!isDeleted && (currentUser.id === reply.author._id || currentUser.role === 'admin') && (
+            {!isDeleted && (currentUser.id === reply.author._id || currentUser.role === 'admin' || currentUser.role === 'superadmin') && (
               <Button 
                 variant="danger" 
                 size="sm"
@@ -668,7 +668,7 @@ const MessageDetail = () => {
               </div>
             </div>
           </div>
-          {!message.isDeleted && (currentUser.id === message.author._id || currentUser.role === 'admin') && (
+          {!message.isDeleted && (currentUser.id === message.author._id || currentUser.role === 'admin' || currentUser.role === 'superadmin') && (
             <Button 
               variant="danger" 
               size="sm"

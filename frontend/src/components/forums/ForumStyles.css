@@ -20,6 +20,7 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --hover-background: rgba(13, 110, 253, 0.05);  /* Bleu très clair pour le hover */
 }
 
 /* Container principal */
@@ -84,8 +85,44 @@
 .sort-btn {
   padding: 6px 12px;
   font-size: 14px;
-  border-radius: 16px;
+  border-radius: 20px;  /* Bordures plus arrondies */
   font-weight: 500;
+}
+
+.sort-btn:hover {
+  background-color: var(--hover-background);  /* Fond bleu très clair au survol */
+}
+
+/* Onglets de tri stylisés */
+.sorting-tabs {
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.sort-tab-btn {
+  padding: 0.8rem 1.5rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.sort-tab-btn:hover {
+  background-color: var(--hover-background) !important;
+  color: var(--primary-color) !important;
+  z-index: 1;
+}
+
+.sort-tab-btn.btn-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.sort-tab-btn.btn-light {
+  background-color: var(--background-white) !important;
+  color: var(--text-color) !important;
 }
 
 /* Liste des forums */
@@ -124,17 +161,18 @@
 .forum-card {
   transition: all 0.3s ease;
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;  /* Bordures plus arrondies */
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   background-color: var(--background-white);
   margin-bottom: 16px;
+  position: relative;
 }
 
 .forum-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: var(--primary-color);
+  background-color: var(--hover-background);  /* Fond bleu très clair au survol */
 }
 
 .forum-card-content {
@@ -177,7 +215,8 @@
 
 .forum-stats {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 16px;
   margin-top: 10px;
   font-weight: 500;
@@ -188,9 +227,11 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;  /* Bordures plus arrondies */
   background-color: var(--light-color);
+  min-width: 110px;  /* Largeur minimale pour un meilleur alignement */
+  justify-content: center;  /* Centrer le contenu */
 }
 
 .date-txt {
@@ -231,8 +272,8 @@
 .forum-badge {
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 12px;  /* Bordures plus arrondies */
   box-shadow: var(--shadow-sm);
 }
 
@@ -457,7 +498,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(45deg, rgba(0,121,211,0.05) 0%, rgba(0,0,0,0) 70%);
+  background: linear-gradient(45deg, var(--hover-background) 0%, rgba(0,0,0,0) 70%);  /* Gradient bleu très clair */
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -671,4 +712,31 @@
   background-color: rgba(255, 255, 255, 1);
   box-shadow: 0 3px 8px rgba(220, 53, 69, 0.3);
   color: #c82333 !important;
+}
+
+/* Alignement des infos dans les cartes de forum */
+.forum-meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  width: 100%;
+  align-items: center;
+}
+
+.forum-meta-item {
+  display: flex;
+  align-items: center;
+  background-color: var(--light-color);
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  gap: 0.5rem;
+  min-width: 110px;
+  justify-content: center;
+}
+
+.forum-meta-icon {
+  font-size: 1rem;
+  color: var(--primary-color);
 } 

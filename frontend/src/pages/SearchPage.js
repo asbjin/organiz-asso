@@ -74,8 +74,8 @@ const SearchPage = () => {
     } else if (type === 'forums') {
       // Recherche de forums
       const token = localStorage.getItem('authToken');
-      // Vérifier si l'utilisateur est admin pour choisir la route appropriée
-      const isAdmin = currentUser && currentUser.role === 'admin';
+      // Vérifie si l'utilisateur est administrateur
+      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
       const endpoint = isAdmin ? 'admin-search' : 'test-search';
       const url = `http://localhost:5000/api/forums/${endpoint}?q=${encodeURIComponent(query)}`;
       

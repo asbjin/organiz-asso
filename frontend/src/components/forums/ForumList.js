@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Button, Spinner, Alert, Modal, Form, Badge } from 'react-bootstrap';
+import { Container, Card, Button, Spinner, Alert, Modal, Form, Badge, ButtonGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { getForums, getForumMessageCount } from '../../services/forumService';
 import { useAuth } from '../../contexts/AuthContext';
-import { BsChat, BsCalendar3, BsPeople, BsArrowUpRightCircle, BsLock, BsPlus, BsTrash } from 'react-icons/bs';
+import { BsChat, BsCalendar3, BsPeople, BsArrowUpRightCircle, BsLock, BsPlus, BsTrash, BsCalendar, BsPerson, BsChevronRight, BsLockFill } from 'react-icons/bs';
 import axios from 'axios';
 import './ForumStyles.css';
 
@@ -68,7 +68,7 @@ const ForumList = () => {
       
       // Filtrer les forums privés pour les utilisateurs non-admin
       const filteredForums = data.filter(forum => 
-        forum.type !== 'closed' || (currentUser && currentUser.role === 'admin')
+        forum.type !== 'closed' || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin'))
       );
       
       // Récupérer le nombre de messages pour chaque forum
@@ -263,30 +263,30 @@ const ForumList = () => {
         </div>
       </div>
 
-      <div className="sorting-section">
-        <div className="sort-options">
+      <div className="mb-4">
+        <ButtonGroup className="sorting-tabs">
           <Button 
-            variant={sortMethod === 'recent' ? 'primary' : 'light'}
-            className="sort-btn"
+            variant={sortMethod === 'recent' ? 'primary' : 'light'} 
             onClick={() => setSortMethod('recent')}
+            className="sort-tab-btn"
           >
             Récent
           </Button>
           <Button 
-            variant={sortMethod === 'popular' ? 'primary' : 'light'}
-            className="sort-btn"
+            variant={sortMethod === 'popular' ? 'primary' : 'light'} 
             onClick={() => setSortMethod('popular')}
+            className="sort-tab-btn"
           >
             Populaire
           </Button>
           <Button 
-            variant={sortMethod === 'alphabetical' ? 'primary' : 'light'}
-            className="sort-btn"
+            variant={sortMethod === 'alphabetical' ? 'primary' : 'light'} 
             onClick={() => setSortMethod('alphabetical')}
+            className="sort-tab-btn"
           >
             A-Z
           </Button>
-        </div>
+        </ButtonGroup>
       </div>
 
       {sortedForums.length === 0 ? (
@@ -306,47 +306,51 @@ const ForumList = () => {
             <div key={forum._id} className="forum-card-wrapper fade-in" style={{animationDelay: `${index * 0.05}s`}}>
               <Link to={`/forum/${forum._id}`} className="forum-card-link">
                 <Card className="forum-card">
-                  <Card.Body>
-                    <div className="forum-card-content">
-                      <div className="forum-info">
-                        <h3 className="forum-title">
-                          {forum.name}
-                          {forum.type === 'closed' && (
-                            <BsLock className="forum-lock-icon" title="Forum privé" />
-                          )}
-                          {(currentUser && (currentUser.role === 'admin' || isForumCreator(forum))) && (
-                            <Button 
-                              variant="link" 
-                              className="delete-forum-btn text-danger"
-                              onClick={(e) => handleDeleteForum(forum._id, e)}
-                              disabled={deletingForum === forum._id}
-                              title="Supprimer ce forum"
-                            >
-                              <BsTrash size={20} />
-                            </Button>
-                          )}
-                        </h3>
-                        <p className="forum-description">{forum.description}</p>
-                        
-                        <div className="forum-stats">
-                          <p className="date-txt" style={{ color: '#007bff', fontWeight: 'bold' }}>
-                            <BsCalendar3 /> {forum.createdAt ? new Date(forum.createdAt).toLocaleDateString('fr-FR', { 
-                              day: '2-digit', 
-                              month: '2-digit', 
-                              year: 'numeric'
-                            }) : 'Date inconnue'}
-                          </p>
-                          <div className="author-txt" style={{ color: '#28a745', fontWeight: 'bold' }}>
-                            <BsPeople /> {forum.creator ? forum.creator.username : "Administrateur"}
-                          </div>
-                          <div className="messages-count" style={{ color: '#dc3545', fontWeight: 'bold' }}>
-                            <BsChat /> {typeof forum.messageCount === 'number' ? forum.messageCount : 0} message{forum.messageCount !== 1 ? 's' : ''}
-                          </div>
+                  <Card.Body className="forum-card-content">
+                    <div className="forum-info">
+                      <h3 className="forum-title">
+                        {forum.name}
+                        {forum.type === 'closed' && (
+                          <BsLock className="forum-lock-icon" title="Forum privé" />
+                        )}
+                        {(currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || isForumCreator(forum))) && (
+                          <Button 
+                            variant="link" 
+                            className="delete-forum-btn text-danger"
+                            onClick={(e) => handleDeleteForum(forum._id, e)}
+                            disabled={deletingForum === forum._id}
+                            title="Supprimer ce forum"
+                          >
+                            <BsTrash size={20} />
+                          </Button>
+                        )}
+                      </h3>
+                      <p className="forum-description">
+                        {forum.description || "Aucune description disponible"}
+                      </p>
+                      
+                      {/* Informations meta alignées */}
+                      <div className="forum-meta-info">
+                        <div className="forum-meta-item">
+                          <BsCalendar className="forum-meta-icon" />
+                          {forum.createdAt ? new Date(forum.createdAt).toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric'
+                          }) : 'Date inconnue'}
+                        </div>
+                        <div className="forum-meta-item">
+                          <BsPerson className="forum-meta-icon" />
+                          {forum.creator ? forum.creator.username : "Administrateur"}
+                        </div>
+                        <div className="forum-meta-item">
+                          <BsChat className="forum-meta-icon" />
+                          {typeof forum.messageCount === 'number' ? forum.messageCount : 0} message{(forum.messageCount !== 1) ? 's' : ''}
                         </div>
                       </div>
-                      <div className="forum-action">
-                        <BsArrowUpRightCircle size={24} />
-                      </div>
+                    </div>
+                    <div className="forum-action">
+                      <BsChevronRight size={20} />
                     </div>
                   </Card.Body>
                   <Card.Footer style={{ backgroundColor: '#f8f9fa', borderTop: '1px solid #dee2e6' }}>
@@ -429,7 +433,7 @@ const ForumList = () => {
                 </div>
                 <div 
                   className={`forum-type-option ${newForumType === 'closed' ? 'selected' : ''}`}
-                  onClick={() => currentUser.role === 'admin' ? setNewForumType('closed') : setCreateError('Seuls les administrateurs peuvent créer des forums privés.')}
+                  onClick={() => (currentUser.role === 'admin' || currentUser.role === 'superadmin') ? setNewForumType('closed') : setCreateError('Seuls les administrateurs peuvent créer des forums privés.')}
                 >
                   <div className="option-icon">🔒</div>
                   <div className="option-info">

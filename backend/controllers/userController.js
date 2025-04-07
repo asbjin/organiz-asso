@@ -128,6 +128,22 @@ exports.changeUserRole = async (req, res) => {
       return res.status(400).json({ message: 'Rôle invalide. Utilisez "member" ou "admin".' });
     }
     
+    // Vérifier si l'utilisateur cible est un super admin
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+    }
+
+    if (targetUser.role === 'superadmin') {
+      return res.status(403).json({ message: 'Impossible de modifier le rôle d\'un super administrateur.' });
+    }
+
+    // Vérifier si l'utilisateur qui fait la demande est un super admin
+    const requestingUser = await User.findById(req.user._id);
+    if (requestingUser.role !== 'superadmin' && targetUser.role === 'admin') {
+      return res.status(403).json({ message: 'Seul un super administrateur peut modifier le rôle d\'un administrateur.' });
+    }
+    
     // Empêcher un administrateur de se rétrograder lui-même
     if (req.user._id.toString() === req.params.id && role === 'member') {
       return res.status(403).json({ message: 'Vous ne pouvez pas vous rétrograder vous-même.' });

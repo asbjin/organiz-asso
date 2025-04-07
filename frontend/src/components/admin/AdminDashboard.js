@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, ListGroup, Button, Spinner, Alert, Table, Badge, Form, InputGroup } from 'react-bootstrap';
+import { Card, Row, Col, ListGroup, Button, Spinner, Alert, Table, Badge, Form, InputGroup, Modal } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { BsSearch } from 'react-icons/bs';
@@ -16,6 +16,11 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
+  
+  // États pour la boîte de dialogue de confirmation
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [actionInfo, setActionInfo] = useState({ userId: '', newRole: '', username: '' });
+  const [actionError, setActionError] = useState('');
 
   const fetchAdminData = async () => {
     try {
@@ -105,7 +110,21 @@ const AdminDashboard = () => {
   }, [searchTerm, users]);
 
   // Fonction pour changer le rôle d'un utilisateur
-  const handleRoleChange = async (userId, newRole) => {
+  const handleRoleChange = async (userId, newRole, username) => {
+    // Si c'est une rétrogradation d'admin à membre, afficher la confirmation
+    const targetUser = users.find(user => user._id === userId);
+    if (targetUser && targetUser.role === 'admin' && newRole === 'member') {
+      setActionInfo({ userId, newRole, username });
+      setShowConfirmModal(true);
+      return;
+    }
+    
+    // Si c'est une promotion (ou pas un admin), procéder directement
+    executeRoleChange(userId, newRole);
+  };
+  
+  // Fonction qui exécute le changement de rôle après confirmation
+  const executeRoleChange = async (userId, newRole) => {
     try {
       await axios.put(`http://localhost:5000/api/users/role/${userId}`, { 
         role: newRole 
@@ -119,10 +138,29 @@ const AdminDashboard = () => {
         return user;
       }));
       
+      setShowConfirmModal(false);
+      setActionError('');
+      
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la modification du rôle');
       console.error(err);
+      if (err.response?.status === 403) {
+        // Si on est dans la modal, afficher l'erreur dans la modal
+        if (showConfirmModal) {
+          setActionError(err.response?.data?.message || 'Vous n\'avez pas les permissions nécessaires pour cette action.');
+        } else {
+          // Sinon, afficher l'erreur générale
+          setError(err.response?.data?.message || 'Vous n\'avez pas les permissions nécessaires pour cette action.');
+        }
+      } else {
+        setError(err.response?.data?.message || 'Erreur lors de la modification du rôle');
+      }
     }
+  };
+
+  // Fermer la modal sans effectuer l'action
+  const handleCloseModal = () => {
+    setShowConfirmModal(false);
+    setActionError('');
   };
 
   // Fonction pour gérer la recherche
@@ -268,7 +306,9 @@ const AdminDashboard = () => {
                       {user.status === 'rejected' && <Badge bg="danger">Rejeté</Badge>}
                     </td>
                     <td>
-                      {user.role === 'admin' ? (
+                      {user.role === 'superadmin' ? (
+                        <Badge bg="danger">Super Administrateur</Badge>
+                      ) : user.role === 'admin' ? (
                         <Badge bg="primary">Administrateur</Badge>
                       ) : (
                         <Badge bg="secondary">Membre</Badge>
@@ -276,16 +316,27 @@ const AdminDashboard = () => {
                     </td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <Button 
-                        variant={user.role === 'admin' ? 'outline-secondary' : 'outline-primary'} 
-                        size="sm"
-                        onClick={() => handleRoleChange(
-                          user._id, 
-                          user.role === 'admin' ? 'user' : 'admin'
-                        )}
-                      >
-                        {user.role === 'admin' ? 'Rétrograder' : 'Promouvoir'}
-                      </Button>
+                      {user.role === 'superadmin' ? (
+                        <Button 
+                          variant="outline-secondary" 
+                          size="sm"
+                          disabled
+                        >
+                          Super Admin
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant={user.role === 'admin' ? 'outline-secondary' : 'outline-primary'} 
+                          size="sm"
+                          onClick={() => handleRoleChange(
+                            user._id, 
+                            user.role === 'admin' ? 'member' : 'admin',
+                            user.username
+                          )}
+                        >
+                          {user.role === 'admin' ? 'Rétrograder' : 'Promouvoir'}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -294,6 +345,34 @@ const AdminDashboard = () => {
           )}
         </Card.Body>
       </Card>
+      
+      {/* Modal de confirmation pour rétrograder un admin */}
+      <Modal show={showConfirmModal} onHide={handleCloseModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmation requise</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {actionError ? (
+            <Alert variant="danger">{actionError}</Alert>
+          ) : (
+            <>
+              <p>Vous êtes sur le point de rétrograder l'administrateur <strong>{actionInfo.username}</strong> au rang de membre.</p>
+              <p>Seul un super-administrateur peut rétrograder un administrateur. Si vous n'êtes pas super-administrateur, cette action échouera.</p>
+              <p>Voulez-vous continuer ?</p>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Annuler
+          </Button>
+          {!actionError && (
+            <Button variant="primary" onClick={() => executeRoleChange(actionInfo.userId, actionInfo.newRole)}>
+              Confirmer
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

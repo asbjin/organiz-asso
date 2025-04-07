@@ -2,23 +2,34 @@
 
 /* Variables */
 :root {
-  --header-height: 70px;
+  --header-height: 5rem;
+  --hover-color: #ffc107;  /* Couleur jaune pour le survol */
 }
 
 /* Header principal */
 .reddit-header {
   background-color: var(--background-white);
-  height: var(--header-height);
+  min-height: var(--header-height);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 16px;
-  padding: 8px 0;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
 }
 
 .header-container {
+  width: 100%;
   height: 100%;
-  padding: 0 16px;
+  padding: 0 1.5rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
 }
 
 /* Logo et marque */
@@ -26,7 +37,9 @@
   display: flex;
   align-items: center;
   padding: 0;
-  margin-right: 16px;
+  margin-right: 1.5rem;
+  text-decoration: none;
+  flex-shrink: 0;
 }
 
 .brand-logo {
@@ -52,25 +65,33 @@
 /* Barre de recherche */
 .search-container {
   flex: 1;
-  max-width: 600px;
-  margin: 0 16px;
-  padding: 6px 0;
+  max-width: 38rem;
+  margin: 0 auto;
+  position: relative;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
 }
 
 .search-input {
   background-color: var(--highlight-color);
   border: 1px solid var(--border-color);
-  padding: 10px 16px;
-  border-radius: 20px;
+  padding: 0.625rem 2.75rem 0.625rem 1.25rem;
+  border-radius: 1.375rem;
   transition: all 0.2s ease;
-  height: 42px;
-  font-size: 15px;
+  height: 100%;
+  font-size: 0.9375rem;
+  width: 100%;
 }
 
 .search-input:focus {
   background-color: var(--background-white);
-  box-shadow: 0 0 0 1px var(--primary-color);
-  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--hover-color);
+  border-color: var(--hover-color);
+}
+
+.search-input:hover {
+  border-color: var(--hover-color);
 }
 
 .search-icon {
@@ -106,7 +127,8 @@
 }
 
 .nav-item:hover {
-  background-color: var(--highlight-color);
+  background-color: rgba(255, 193, 7, 0.1);  /* Jaune avec transparence */
+  color: var(--hover-color);
 }
 
 .nav-item.active {
@@ -203,6 +225,11 @@
   color: var(--secondary-color);
 }
 
+.dropdown-item:hover {
+  background-color: rgba(255, 193, 7, 0.1);  /* Jaune avec transparence */
+  color: var(--hover-color);
+}
+
 /* Barre de recherche mobile */
 .mobile-search-icon {
   display: flex;
@@ -278,5 +305,5 @@
 
 /* Ajustement pour corriger le décalage du header fixed */
 body {
-  padding-top: var(--header-height);
+  padding-top: calc(var(--header-height) + 1.25rem);
 } 
