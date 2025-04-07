@@ -46,8 +46,12 @@ const ForumDetail = () => {
       const forumRes = await axios.get(`http://localhost:5000/api/forums/${id}`, { withCredentials: true });
       const forumData = forumRes.data;
       
+      // Log le rôle de l'utilisateur pour le débogage
+      console.log('Accès forum privé - Rôle utilisateur:', currentUser.role);
+      console.log('Type du forum:', forumData.type);
+      
       // Vérifier si l'utilisateur a accès au forum privé
-      if (forumData.type === 'closed' && currentUser.role !== 'admin') {
+      if (forumData.type === 'closed' && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
         setError('Vous n\'avez pas les droits nécessaires pour accéder à ce forum privé.');
         setLoading(false);
         return;
@@ -517,31 +521,23 @@ const ForumDetail = () => {
               >
                 <div className="message-header">
                   <div className="message-author">
-                    {message.author?.profilePicture ? (
-                      <img 
-                        src={message.author.profilePicture} 
-                        alt={message.author?.username || "Utilisateur"} 
-                        className="author-avatar"
-                      />
-                    ) : (
-                      <div 
-                        className="author-avatar-initials"
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          backgroundColor: '#007bff',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold',
-                          fontSize: '18px'
-                        }}
-                      >
-                        {getUserInitials(message.author?.username)}
-                      </div>
-                    )}
+                    <div 
+                      className="author-avatar-initials"
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '18px'
+                      }}
+                    >
+                      {getUserInitials(message.author?.username)}
+                    </div>
                     <span className="author-name">{message.author?.username || "Utilisateur"}</span>
                   </div>
                   <small className="text-muted">

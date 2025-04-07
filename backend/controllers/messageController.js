@@ -36,7 +36,7 @@ exports.createMessage = async (req, res) => {
       }
       
       // Vérifier si l'utilisateur a accès au forum
-      if (forum.type === 'closed' && req.user.role !== 'admin') {
+      if (forum.type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
         return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
       }
       
@@ -153,7 +153,7 @@ exports.getForumMessages = async (req, res) => {
       }
       
       // Vérifier si l'utilisateur a accès au forum
-      if (forum.type === 'closed' && req.user.role !== 'admin') {
+      if (forum.type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
         return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
       }
       
@@ -273,7 +273,7 @@ exports.getMessageReplies = async (req, res) => {
       return res.status(404).json({ message: 'Forum non trouvé.' });
     }
     
-    if (forum.type === 'closed' && req.user.role !== 'admin') {
+    if (forum.type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
     }
     
@@ -322,7 +322,7 @@ exports.updateMessage = async (req, res) => {
     }
     
     // Vérifier si l'utilisateur est l'auteur du message ou un administrateur
-    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à modifier ce message.' });
     }
     
@@ -361,7 +361,7 @@ exports.deleteMessage = async (req, res) => {
     
     // Vérifier si l'utilisateur est autorisé à supprimer ce message
     // (auteur du message ou administrateur)
-    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
     }
     
@@ -417,7 +417,7 @@ exports.deleteMessageCascade = async (req, res) => {
     
     // Vérifier si l'utilisateur est autorisé à supprimer ce message
     // (auteur du message ou administrateur)
-    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (message.author.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à supprimer ce message.' });
     }
     
@@ -557,7 +557,7 @@ exports.searchMessages = async (req, res) => {
           return res.status(404).json({ message: 'Forum non trouvé.' });
         }
         
-        if (forum.type === 'closed' && req.user.role !== 'admin') {
+        if (forum.type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
           return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
         }
       } catch (forumError) {
@@ -566,7 +566,7 @@ exports.searchMessages = async (req, res) => {
       }
     } else {
       // Si aucun forum n'est spécifié, exclure les messages des forums fermés pour les non-admins
-      if (!req.user || req.user.role !== 'admin') {
+      if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
         try {
           const closedForums = await Forum.find({ type: 'closed' }).select('_id');
           if (closedForums && closedForums.length > 0) {
@@ -676,7 +676,7 @@ exports.getUserMessages = async (req, res) => {
     };
     
     // Exclure les messages des forums fermés pour les non-admins
-    if (req.user.role !== 'admin' && req.user._id.toString() !== userId) {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user._id.toString() !== userId) {
       const closedForums = await Forum.find({ type: 'closed' }).select('_id');
       query.forum = { $nin: closedForums.map(f => f._id) };
     }

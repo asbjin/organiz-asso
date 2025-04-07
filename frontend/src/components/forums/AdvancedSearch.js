@@ -264,9 +264,6 @@ const AdvancedSearch = () => {
 
   // Fonction pour générer l'avatar pour une suggestion d'auteur
   const renderUserAvatar = (user) => {
-    if (user.profilePicture) {
-      return <div className="suggestion-avatar"><img src={user.profilePicture} alt={user.username} /></div>;
-    }
     return <div className="suggestion-avatar">{user.username.charAt(0).toUpperCase()}</div>;
   };
 

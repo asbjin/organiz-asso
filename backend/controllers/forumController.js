@@ -13,7 +13,7 @@ exports.createForum = async (req, res) => {
     }
     
     // Vérifier si l'utilisateur tente de créer un forum privé sans être admin
-    if (type === 'closed' && req.user.role !== 'admin') {
+    if (type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'avez pas les droits nécessaires pour créer un forum privé.' });
     }
     
@@ -73,8 +73,12 @@ exports.getForumById = async (req, res) => {
       return res.status(404).json({ message: 'Forum non trouvé.' });
     }
     
+    // Log pour le débogage des accès aux forums privés
+    console.log(`Forum accès - ID: ${req.params.id}, Type: ${forum.type}`);
+    console.log(`User role: ${req.user.role}, User ID: ${req.user._id}`);
+    
     // Vérifier si l'utilisateur a accès au forum
-    if (forum.type === 'closed' && req.user.role !== 'admin') {
+    if (forum.type === 'closed' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
     }
     
@@ -148,7 +152,7 @@ exports.deleteForum = async (req, res) => {
     }
     
     // Vérifier si l'utilisateur est admin ou le créateur du forum
-    if (req.user.role !== 'admin' && forum.createdBy.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && forum.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Vous n\'avez pas les droits nécessaires pour supprimer ce forum.' });
     }
     
@@ -181,7 +185,7 @@ exports.autocompleteForums = async (req, res) => {
     };
     
     // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       query.type = { $ne: 'closed' };
     }
     
@@ -300,7 +304,7 @@ exports.searchForumsByName = async (req, res) => {
     };
     
     // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       query.type = { $ne: 'closed' };
     }
     

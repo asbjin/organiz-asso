@@ -135,30 +135,13 @@ const ConversationsList = ({ onSelectConversation }) => {
       onClick={() => handleStartConversation(user._id)}
     >
       <div className="avatar-container me-2">
-        {user.profilePicture ? (
-          <img 
-            src={user.profilePicture} 
-            alt={user.username} 
-            className="avatar-img"
-            style={{ width: 40, height: 40, borderRadius: '50%' }}
-          />
-        ) : (
+        <div className="avatar-placeholder">
+          {user.username.charAt(0).toUpperCase()}
+        </div>
+        {user.lastLogin && (
           <div 
-            className="avatar-placeholder"
-            style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: '50%', 
-              background: '#6c757d', 
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
-            }}
-          >
-            {user.username.charAt(0).toUpperCase()}
-          </div>
+            className={`online-indicator ${new Date(user.lastLogin) > new Date(Date.now() - 10 * 60 * 1000) ? 'online' : 'offline'}`}
+          />
         )}
       </div>
       <div>
@@ -239,17 +222,9 @@ const ConversationsList = ({ onSelectConversation }) => {
                 <div className="d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center">
                     <div className="avatar-container me-2">
-                      {conversation.user.profilePicture ? (
-                        <img 
-                          src={conversation.user.profilePicture} 
-                          alt={conversation.user.username} 
-                          className="avatar-img"
-                        />
-                      ) : (
-                        <div className="avatar-placeholder">
-                          {conversation.user.username.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <div className="avatar-placeholder">
+                        {conversation.user.username.charAt(0).toUpperCase()}
+                      </div>
                       {conversation.user.lastLogin && (
                         <div 
                           className={`online-indicator ${new Date(conversation.user.lastLogin) > new Date(Date.now() - 10 * 60 * 1000) ? 'online' : 'offline'}`}

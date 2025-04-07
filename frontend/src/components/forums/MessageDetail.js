@@ -592,6 +592,12 @@ const MessageDetail = () => {
     handleDeleteMessage(replyId);
   };
 
+  // Fonction pour obtenir les initiales du nom d'utilisateur
+  const getUserInitials = (username) => {
+    if (!username) return '?';
+    return username.charAt(0).toUpperCase();
+  };
+
   if (loading) {
     return (
       <div className="d-flex justify-content-center my-5">
@@ -649,14 +655,19 @@ const MessageDetail = () => {
       <Card className={`mb-4 shadow-sm message-card ${message.isDeleted ? 'bg-light message-deleted' : ''}`}>
         <Card.Header className="d-flex justify-content-between bg-light">
           <div className="d-flex align-items-center">
-            <img
-              src={message.author.profilePicture || "https://via.placeholder.com/40"}
-              alt={message.author.username}
-              className="rounded-circle me-2"
-              width="40"
-              height="40"
-              style={{ opacity: message.isDeleted ? 0.5 : 1 }}
-            />
+            <div 
+              className="rounded-circle d-flex align-items-center justify-content-center me-2"
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '18px'
+              }}
+            >
+              {getUserInitials(message.author.username)}
+            </div>
             <div>
               <Link to={`/profile/${message.author._id}`} className="fw-bold text-decoration-none">
                 {message.author.username}

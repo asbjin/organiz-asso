@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button, Form, Spinner } from 'react-bootstrap';
 import { BsReply, BsPencil, BsTrash } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
 // Composant pour afficher une réponse individuelle
 const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
@@ -11,6 +13,15 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
   const [submitting, setSubmitting] = useState(false);
   const replyRef = useRef(null);
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(reply.content);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [showReplies, setShowReplies] = useState(true);
+  
+  const maxDepth = 5; // Profondeur maximale des réponses emboîtées
   
   // Déterminer si cette réponse est ciblée
   const isTargeted = targetReplyId === reply._id;
@@ -59,6 +70,31 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
     }
   };
 
+  const handleEdit = async () => {
+    if (isSubmittingEdit) return;
+    
+    setIsSubmittingEdit(true);
+    try {
+      await axios.put(`http://localhost:5000/api/messages/${reply._id}`, {
+        content: editedContent
+      }, { withCredentials: true });
+      
+      reply.content = editedContent;
+      reply.isEdited = true;
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erreur lors de la modification de la réponse:', error);
+      alert('Erreur lors de la modification de la réponse.');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+  
+  const cancelEdit = () => {
+    setEditedContent(reply.content);
+    setIsEditing(false);
+  };
+
   // Style basé sur le niveau d'imbrication
   const depthClass = `reply-level-${depth % 6}`;
 
@@ -76,32 +112,23 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
     >
       <div className="message-header">
         <div className="message-author">
-          {reply.author?.profilePicture ? (
-            <img 
-              src={reply.author.profilePicture} 
-              alt={reply.author?.username || "Utilisateur"} 
-              className="author-avatar"
-              style={{ width: '30px', height: '30px' }}
-            />
-          ) : (
-            <div 
-              className="author-avatar-initials"
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                backgroundColor: '#007bff',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}
-            >
-              {getUserInitials(reply.author?.username)}
-            </div>
-          )}
+          <div 
+            className="author-avatar-initials"
+            style={{
+              width: '30px',
+              height: '30px',
+              borderRadius: '50%',
+              backgroundColor: '#007bff',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          >
+            {getUserInitials(reply.author?.username)}
+          </div>
           <span className="author-name">{reply.author?.username || "Utilisateur"}</span>
         </div>
         <small className="text-muted">
@@ -134,7 +161,9 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
               variant="link" 
               size="sm"
               className="text-warning" 
-              onClick={() => alert('Fonctionnalité de modification à venir')}
+              onClick={() => {
+                setIsEditing(true);
+              }}
             >
               <BsPencil /> Modifier
             </Button>

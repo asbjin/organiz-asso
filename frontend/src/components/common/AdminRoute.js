@@ -3,8 +3,9 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Spinner } from 'react-bootstrap';
 
+// AdminRoute sécurise les routes pour les administrateurs
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
 
   if (loading) {
     return (
@@ -16,12 +17,9 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" />;
+  // Vérifier si l'utilisateur est connecté et qu'il a le rôle admin ou superadmin
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
+    return <Navigate to="/" replace />;
   }
 
   return children;

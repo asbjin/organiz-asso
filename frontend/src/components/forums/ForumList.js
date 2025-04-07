@@ -117,7 +117,7 @@ const ForumList = () => {
     }
 
     // Vérifier si l'utilisateur est admin pour les forums privés
-    if (newForumType === 'closed' && currentUser && currentUser.role !== 'admin') {
+    if (newForumType === 'closed' && currentUser && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
       setCreateError('Vous n\'avez pas les droits nécessaires pour créer un forum privé. Seuls les administrateurs peuvent créer des forums privés.');
       return;
     }
@@ -437,12 +437,12 @@ const ForumList = () => {
                 >
                   <div className="option-icon">🔒</div>
                   <div className="option-info">
-                    <h5>Privé {currentUser.role !== 'admin' && <small>(Admin uniquement)</small>}</h5>
+                    <h5>Privé {currentUser.role !== 'admin' && currentUser.role !== 'superadmin' && <small>(Admin uniquement)</small>}</h5>
                     <p>Accès restreint aux administrateurs</p>
                   </div>
                 </div>
               </div>
-              {currentUser.role !== 'admin' && newForumType === 'open' && (
+              {currentUser.role !== 'admin' && currentUser.role !== 'superadmin' && newForumType === 'open' && (
                 <Alert variant="info" className="mt-3">
                   En tant qu'utilisateur, vous ne pouvez créer que des forums publics.
                 </Alert>
@@ -455,7 +455,7 @@ const ForumList = () => {
               <Button 
                 variant="primary" 
                 type="submit" 
-                disabled={creating || !newForumName || !newForumDescription || (newForumType === 'closed' && currentUser.role !== 'admin')}
+                disabled={creating || !newForumName || !newForumDescription || (newForumType === 'closed' && currentUser.role !== 'admin' && currentUser.role !== 'superadmin')}
                 className="create-button"
               >
                 {creating ? 'Création en cours...' : 'Créer le forum'}
