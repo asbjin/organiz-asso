@@ -17,4 +17,7 @@ router.post('/', isAuthenticated, isAdmin, forumController.createForum);
 router.put('/:id', isAuthenticated, isAdmin, forumController.updateForum);
 router.delete('/:id', isAuthenticated, isAdmin, forumController.deleteForum);
 
+// Route pour rechercher des forums
+router.get('/search', isAuthenticated, forumController.searchForums);
+
 module.exports = router;

@@ -181,3 +181,42 @@ exports.autocompleteForums = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
+// Rechercher des forums
+exports.searchForums = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim() === '') {
+      return res.status(200).json([]);
+    }
+    
+    // Construire la requête de recherche
+    let query = {
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } }
+      ]
+    };
+    
+    // Si l'utilisateur n'est pas administrateur, exclure les forums fermés
+    if (req.user.role !== 'admin') {
+      query.type = { $ne: 'closed' };
+    }
+    
+    // Recherche de forums
+    const forums = await Forum.find(query)
+      .select('name description type createdAt lastActivity')
+      .populate('createdBy', 'username')
+      .limit(20);
+    
+    res.status(200).json(forums);
+  } catch (error) {
+    console.error('Erreur lors de la recherche de forums:', error);
+    res.status(500).json({ 
+      message: 'Erreur serveur lors de la recherche.', 
+      error: error.message,
+      results: [] // Toujours renvoyer un tableau vide en cas d'erreur
+    });
+  }
+};

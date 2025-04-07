@@ -41,7 +41,7 @@ function Header() {
     if (!searchQuery.trim()) return;
     
     // Rediriger vers la page de recherche avec la requête comme paramètre
-    navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    navigate(`/search?q=${encodeURIComponent(searchQuery)}&type=messages`);
     setShowMobileSearch(false);
   };
 
@@ -65,7 +65,7 @@ function Header() {
             <div className="position-relative">
               <Form.Control
                 type="text"
-                placeholder="Rechercher forums, messages..."
+                placeholder="Rechercher dans Organiz'asso..."
                 className="search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -196,7 +196,7 @@ function Header() {
             <Form.Control
               ref={searchInputRef}
               type="text"
-              placeholder="Rechercher forums, messages..."
+              placeholder="Rechercher dans Organiz'asso..."
               className="search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

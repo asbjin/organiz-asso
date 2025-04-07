@@ -204,4 +204,72 @@
 .empty-results-suggestion {
   margin-top: 1rem;
   color: #495057;
+}
+
+/* Styles pour les onglets de recherche */
+.search-tabs .nav-link {
+  color: #495057;
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+}
+
+.search-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: transparent;
+  border-bottom: 3px solid #0d6efd;
+}
+
+.search-tabs .nav-link:hover:not(.active) {
+  border-bottom: 3px solid #e9ecef;
+}
+
+/* Styles pour les résultats utilisateur et forum */
+.user-results, .forum-results {
+  margin-top: 1.5rem;
+}
+
+/* Animation d'entrée pour les résultats */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-result-card {
+  animation: fadeIn 0.3s ease-out forwards;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+}
+
+.search-result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #dee2e6;
+}
+
+/* Style pour le formulaire de recherche principal */
+.search-page .search-input {
+  height: 50px;
+  font-size: 1.1rem;
+  padding-left: 1rem;
+  border-radius: 8px 0 0 8px;
+}
+
+.search-page .btn-primary {
+  border-radius: 0 8px 8px 0;
+  padding: 0.5rem 1.25rem;
+}
+
+/* Styles responsifs */
+@media (max-width: 576px) {
+  .search-tabs .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .search-page h1 {
+    font-size: 1.5rem;
+  }
 } 

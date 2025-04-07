@@ -198,3 +198,31 @@ exports.autocompleteUsers = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
+// Rechercher des utilisateurs
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim() === '') {
+      return res.status(200).json([]);
+    }
+    
+    // Recherche d'utilisateurs par nom d'utilisateur
+    const users = await User.find({
+      username: { $regex: q, $options: 'i' },
+      status: 'approved' // Seulement les utilisateurs approuvés
+    })
+    .select('username profilePicture role createdAt')
+    .limit(20);
+    
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Erreur lors de la recherche d\'utilisateurs:', error);
+    res.status(500).json({ 
+      message: 'Erreur serveur lors de la recherche.', 
+      error: error.message,
+      results: [] // Toujours renvoyer un tableau vide en cas d'erreur
+    });
+  }
+};

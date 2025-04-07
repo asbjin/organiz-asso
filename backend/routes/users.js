@@ -16,4 +16,7 @@ router.put('/role/:id', isAuthenticated, isAdmin, userController.changeUserRole)
 // Route pour l'autocomplétion des noms d'utilisateurs
 router.get('/autocomplete', isAuthenticated, userController.autocompleteUsers);
 
+// Route pour rechercher des utilisateurs
+router.get('/search', isAuthenticated, userController.searchUsers);
+
 module.exports = router;
