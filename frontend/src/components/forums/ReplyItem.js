@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, Form, Spinner } from 'react-bootstrap';
 import { BsReply, BsPencil, BsTrash } from 'react-icons/bs';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Composant pour afficher une réponse individuelle
 const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
@@ -9,6 +10,7 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const replyRef = useRef(null);
+  const { currentUser } = useAuth();
   
   // Déterminer si cette réponse est ciblée
   const isTargeted = targetReplyId === reply._id;
@@ -32,6 +34,10 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
   if (!reply || typeof reply !== 'object') {
     return null;
   }
+  
+  // Vérifier si l'utilisateur actuel est l'auteur du message
+  const isCurrentUserAuthor = currentUser && reply.author && 
+    (currentUser.id === reply.author._id || currentUser.role === 'admin');
 
   const handleReplyClick = () => {
     setShowReplyForm(!showReplyForm);
@@ -122,7 +128,7 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
           <BsReply /> Répondre
         </Button>
         
-        {reply.isCurrentUserAuthor && (
+        {isCurrentUserAuthor && (
           <>
             <Button 
               variant="link" 
