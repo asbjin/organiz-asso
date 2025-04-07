@@ -11,8 +11,7 @@ const EditProfile = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    bio: '',
-    profilePicture: ''
+    bio: ''
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -28,8 +27,7 @@ const EditProfile = () => {
         setFormData({
           username: res.data.username || '',
           email: res.data.email || '',
-          bio: res.data.bio || '',
-          profilePicture: res.data.profilePicture || ''
+          bio: res.data.bio || ''
         });
         
         setError('');
@@ -92,7 +90,7 @@ const EditProfile = () => {
       
       <Card>
         <Card.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
+          {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
           {success && <Alert variant="success">{success}</Alert>}
           
           <Form onSubmit={handleSubmit}>
@@ -128,20 +126,6 @@ const EditProfile = () => {
                 onChange={handleChange}
                 placeholder="Parlez-nous de vous..."
               />
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>URL de la photo de profil</Form.Label>
-              <Form.Control
-                type="text"
-                name="profilePicture"
-                value={formData.profilePicture}
-                onChange={handleChange}
-                placeholder="https://exemple.com/image.jpg"
-              />
-              <Form.Text className="text-muted">
-                Entrez l'URL d'une image pour votre photo de profil
-              </Form.Text>
             </Form.Group>
             
             <div className="d-flex justify-content-between">

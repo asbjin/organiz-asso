@@ -13,6 +13,12 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Fonction pour obtenir les initiales du nom d'utilisateur
+  const getUserInitials = (username) => {
+    if (!username) return '?';
+    return username.charAt(0).toUpperCase();
+  };
+
   useEffect(() => {
     console.log('ID du profil demandé:', id);
     console.log('Utilisateur actuel:', currentUser);
@@ -96,13 +102,12 @@ const Profile = () => {
         <Col md={4}>
           <Card className="mb-4">
             <Card.Body className="text-center">
-              <img
-                src={profile.profilePicture || "https://via.placeholder.com/150"}
-                alt={profile.username}
-                className="rounded-circle mb-3"
-                width="150"
-                height="150"
-              />
+              <div 
+                className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
+                style={{ width: '150px', height: '150px', fontSize: '70px' }}
+              >
+                {getUserInitials(profile.username)}
+              </div>
               <h4>{profile.username}</h4>
               <p className="text-muted">{profile.email}</p>
               
