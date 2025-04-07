@@ -3,7 +3,8 @@ import { Navbar, Container, Nav, Button, NavDropdown, Form, Offcanvas } from 're
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
-import { BsSearch, BsHouseDoor, BsChat, BsPersonCircle, BsGear, BsBoxArrowRight, BsShieldCheck, BsX, BsList } from 'react-icons/bs';
+import { BsSearch, BsHouseDoor, BsChat, BsPersonCircle, BsGear, BsBoxArrowRight, BsShieldCheck, BsX, BsList, BsEnvelope } from 'react-icons/bs';
+import ChatNotificationBadge from '../chat/ChatNotificationBadge';
 
 function Header() {
   const { currentUser: user, isAuthenticated, logout } = useAuth();
@@ -117,6 +118,11 @@ function Header() {
                   <Nav.Link as={Link} to="/forums" className="nav-item">
                     <BsChat className="nav-icon" />
                     <span className="nav-text">Forums</span>
+                  </Nav.Link>
+                  <Nav.Link as={Link} to="/chat" className="nav-item position-relative">
+                    <BsEnvelope className="nav-icon" />
+                    <span className="nav-text">Messages</span>
+                    <ChatNotificationBadge />
                   </Nav.Link>
                   {user && (user.role === 'admin' || user.role === 'superadmin') && (
                     <Nav.Link as={Link} to="/admin" className="nav-item">
