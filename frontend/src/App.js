@@ -23,6 +23,10 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import PendingUsers from './components/admin/PendingUsers';
 import ManageForums from './components/admin/ManageForums';
 import SearchPage from './pages/SearchPage';
+import ChatPage from './pages/ChatPage';
+
+// Provider pour le chat
+import { ChatProvider } from './contexts/ChatContext';
 
 // Composant de chargement
 const LoadingComponent = () => (
@@ -35,7 +39,7 @@ const LoadingComponent = () => (
 
 function App() {
   return (
-    <>
+    <ChatProvider>
       <Header />
       <Container className="py-4">
         <Routes>
@@ -93,6 +97,24 @@ function App() {
             }
           />
           
+          {/* Routes de chat */}
+          <Route 
+            path="/chat" 
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/chat/:userId" 
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Routes protégées pour les administrateurs */}
           <Route 
             path="/admin" 
@@ -124,7 +146,7 @@ function App() {
         </Routes>
       </Container>
       <Footer />
-    </>
+    </ChatProvider>
   );
 }
 

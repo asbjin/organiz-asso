@@ -13,100 +13,76 @@ export const SocketProvider = ({ children }) => {
   // Utiliser useRef pour conserver les messages déjà envoyés entre les rendus
   const sentMessagesRef = useRef(new Set());
   const socketRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-
-  // Fonction pour établir la connexion WebSocket
-  const establishConnection = () => {
-    // Ne pas initialiser le socket si l'utilisateur n'est pas authentifié
-    if (!isAuthenticated || !currentUser) {
-      console.log('Pas de connexion WebSocket: utilisateur non authentifié');
-      return;
-    }
-
-    // Récupérer le token actuel
-    const authToken = localStorage.getItem('authToken');
-
-    if (!authToken) {
-      console.log('Pas de connexion WebSocket: token manquant');
-      return;
-    }
-
-    try {
-      console.log('Initialisation du WebSocket avec l\'utilisateur:', currentUser.username);
-      const newSocket = io('http://localhost:5000', {
-        withCredentials: true,
-        auth: {
-          token: authToken
-        },
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000
-      });
-
-      // Événements de connexion
-      newSocket.on('connect', () => {
-        console.log('Connexion WebSocket établie');
-        setConnected(true);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log('Connexion WebSocket fermée');
-        setConnected(false);
-      });
-
-      newSocket.on('connect_error', (error) => {
-        console.error('Erreur de connexion WebSocket:', error.message);
-        setConnected(false);
-      });
-
-      newSocket.on('error', (error) => {
-        console.error('Erreur WebSocket:', error);
-      });
-
-      socketRef.current = newSocket;
-      setSocket(newSocket);
-    } catch (error) {
-      console.error('Erreur lors de l\'initialisation du socket:', error);
-      socketRef.current = null;
-      setSocket(null);
-      setConnected(false);
-    }
-  };
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttemptsRef = useRef(5);
 
   useEffect(() => {
-    // Nettoyer les anciennes tentatives de reconnexion
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    // Fermer la connexion existante si nécessaire
-    if (socketRef.current) {
-      console.log('Fermeture de la connexion WebSocket existante');
-      socketRef.current.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-      setConnected(false);
-    }
-
-    // Si l'utilisateur est authentifié, établir une nouvelle connexion
-    if (isAuthenticated && currentUser) {
-      // Petit délai pour s'assurer que le token est bien défini dans localStorage
-      reconnectTimeoutRef.current = setTimeout(() => {
-        establishConnection();
-      }, 500);
-    }
-
-    // Nettoyer la connexion lors du démontage du composant
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+    let socketInstance = null;
+    
+    // Fonction pour limiter les tentatives de reconnexion
+    const connectSocket = () => {
+      // Limiter les tentatives de reconnexion
+      if (reconnectAttemptsRef.current >= maxReconnectAttemptsRef.current) {
+        console.error('Nombre maximal de tentatives de reconnexion atteint');
+        return;
       }
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      
+      if (isAuthenticated && currentUser) {
+        // Ne créer une nouvelle instance que si nécessaire
+        if (!socketInstance) {
+          socketInstance = io('http://localhost:5000', {
+            withCredentials: true,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: 5
+          });
+          
+          // Gestionnaires d'événements pour la connexion socket
+          socketInstance.on('connect', () => {
+            console.log('Socket connecté');
+            setConnected(true);
+            reconnectAttemptsRef.current = 0;
+            
+            // Authentifier le socket après connexion
+            socketInstance.emit('authenticate', {
+              userId: currentUser.id,
+              username: currentUser.username
+            });
+          });
+          
+          socketInstance.on('connect_error', (err) => {
+            console.error('Erreur de connexion socket:', err);
+            reconnectAttemptsRef.current++;
+            setConnected(false);
+          });
+          
+          socketInstance.on('disconnect', (reason) => {
+            console.log('Socket déconnecté:', reason);
+            setConnected(false);
+          });
+          
+          setSocket(socketInstance);
+        }
+      } else if (socketInstance) {
+        // Déconnexion si l'utilisateur n'est plus authentifié
+        socketInstance.disconnect();
+        socketInstance = null;
+        setSocket(null);
+        setConnected(false);
       }
     };
-  }, [currentUser, isAuthenticated]);
+    
+    connectSocket();
+    
+    // Nettoyage
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+        socketInstance = null;
+      }
+    };
+  }, [isAuthenticated, currentUser]);
 
   // Fonctions pour interagir avec les WebSockets
   const joinForum = (forumId) => {
