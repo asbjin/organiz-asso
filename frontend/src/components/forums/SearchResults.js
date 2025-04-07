@@ -10,12 +10,17 @@ import './SearchStyles.css';
 /**
  * Composant pour afficher les résultats de recherche de messages
  */
-const SearchResults = ({ results, searchQuery = '', isLoading }) => {
+const SearchResults = ({ results = [], searchQuery = '', isLoading }) => {
+  // Vérifier que results est bien un tableau
+  const validResults = Array.isArray(results) ? results : [];
+  
   // Filtres pour la mise en évidence des mots-clés
   const getHighlightedText = (text, keywords) => {
     if (!keywords || !text) return text;
     
-    const sanitizedText = DOMPurify.sanitize(text);
+    // S'assurer que text est une chaîne de caractères
+    const safeText = typeof text === 'string' ? text : String(text || '');
+    const sanitizedText = DOMPurify.sanitize(safeText);
     
     // Cas où on cherche une expression exacte
     if (keywords.startsWith('"') && keywords.endsWith('"')) {
@@ -44,8 +49,11 @@ const SearchResults = ({ results, searchQuery = '', isLoading }) => {
   const getContentSnippet = (content, keywords, maxLength = 250) => {
     if (!content) return '';
     
+    // S'assurer que content est une chaîne de caractères
+    const safeContent = typeof content === 'string' ? content : String(content || '');
+    
     // Nettoyer le HTML
-    let plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    let plainText = safeContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     
     if (!keywords || !keywords.trim()) {
       // Sans mot-clé, retourner le début du contenu
@@ -84,7 +92,7 @@ const SearchResults = ({ results, searchQuery = '', isLoading }) => {
       const date = new Date(dateString);
       return format(date, 'dd MMMM yyyy à HH:mm', { locale: fr });
     } catch (error) {
-      return dateString;
+      return dateString || 'Date inconnue';
     }
   };
   
@@ -100,50 +108,60 @@ const SearchResults = ({ results, searchQuery = '', isLoading }) => {
   );
   
   // Rendu d'un résultat de recherche
-  const renderSearchResult = (message) => (
-    <Card key={message._id} className="search-result-card mb-3">
-      <Card.Body>
-        <div className="search-result-header">
-          <Card.Title className="search-result-title">
-            <Link to={`/message/${message._id}`}>
-              {message.title || 'Message sans titre'}
-            </Link>
-          </Card.Title>
-          <Badge bg="secondary" className="search-result-forum">
-            <BsChat className="me-1" />
-            {message.forum?.name || 'Forum inconnu'}
-          </Badge>
-        </div>
-        
-        <div className="search-result-meta">
-          <div className="search-result-meta-item">
-            <BsPerson className="search-result-meta-icon" />
-            <Link to={`/profile/${message.author?._id}`}>
-              {message.author?.username || 'Utilisateur inconnu'}
-            </Link>
+  const renderSearchResult = (message) => {
+    if (!message || typeof message !== 'object') {
+      return null;
+    }
+    
+    return (
+      <Card key={message._id} className="search-result-card mb-3">
+        <Card.Body>
+          <div className="search-result-header">
+            <Card.Title className="search-result-title">
+              <Link to={`/message/${message._id}`}>
+                {message.title || 'Message sans titre'}
+              </Link>
+            </Card.Title>
+            <Badge bg="secondary" className="search-result-forum">
+              <BsChat className="me-1" />
+              {message.forum?.name || 'Forum inconnu'}
+            </Badge>
           </div>
-          <div className="search-result-meta-item">
-            <BsCalendar className="search-result-meta-icon" />
-            {formatDate(message.createdAt)}
+          
+          <div className="search-result-meta">
+            <div className="search-result-meta-item">
+              <BsPerson className="search-result-meta-icon" />
+              {message.author ? (
+                <Link to={`/profile/${message.author._id}`}>
+                  {message.author.username || 'Utilisateur inconnu'}
+                </Link>
+              ) : (
+                'Utilisateur inconnu'
+              )}
+            </div>
+            <div className="search-result-meta-item">
+              <BsCalendar className="search-result-meta-icon" />
+              {formatDate(message.createdAt)}
+            </div>
           </div>
-        </div>
-        
-        <div 
-          className="search-result-snippet"
-          dangerouslySetInnerHTML={{
-            __html: getHighlightedText(
-              getContentSnippet(message.content, searchQuery),
-              searchQuery
-            )
-          }}
-        />
-      </Card.Body>
-    </Card>
-  );
+          
+          <div 
+            className="search-result-snippet"
+            dangerouslySetInnerHTML={{
+              __html: getHighlightedText(
+                getContentSnippet(message.content, searchQuery),
+                searchQuery
+              )
+            }}
+          />
+        </Card.Body>
+      </Card>
+    );
+  };
   
   // Affichage du nombre de résultats
   const renderResultsInfo = () => {
-    const count = results.length;
+    const count = validResults.length;
     return (
       <div className="search-results-info mb-3">
         <BsSearch className="me-2" />
@@ -168,12 +186,16 @@ const SearchResults = ({ results, searchQuery = '', isLoading }) => {
   
   return (
     <div className="search-results-container">
-      {results.length > 0 ? (
+      {validResults.length > 0 ? (
         <>
           {renderResultsInfo()}
           <Row>
             <Col>
-              {results.map(renderSearchResult)}
+              {validResults.map((message, index) => (
+                <React.Fragment key={message._id || index}>
+                  {renderSearchResult(message)}
+                </React.Fragment>
+              ))}
             </Col>
           </Row>
         </>

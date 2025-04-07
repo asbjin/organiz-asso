@@ -104,7 +104,14 @@ const AdvancedSearch = () => {
   // Fonction pour récupérer les suggestions d'auteurs
   const fetchAuthorSuggestions = async (query) => {
     try {
-      const response = await axios.get(`/api/users/autocomplete?q=${encodeURIComponent(query)}`);
+      // Récupérer le token d'authentification du localStorage
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`/api/users/autocomplete?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       setAuthorSuggestions(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération des suggestions d\'auteurs:', error);
@@ -114,7 +121,14 @@ const AdvancedSearch = () => {
   // Fonction pour récupérer les suggestions de forums
   const fetchForumSuggestions = async (query) => {
     try {
-      const response = await axios.get(`/api/forums/autocomplete?q=${encodeURIComponent(query)}`);
+      // Récupérer le token d'authentification du localStorage
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`/api/forums/autocomplete?q=${encodeURIComponent(query)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       setForumSuggestions(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération des suggestions de forums:', error);

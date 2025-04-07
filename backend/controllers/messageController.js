@@ -480,65 +480,99 @@ exports.searchMessages = async (req, res) => {
     const query = { isDeleted: { $ne: true } };
     
     // Filtrer par mot-clé avec différents modes de recherche
-    if (keyword) {
-      if (searchMode === 'exactPhrase') {
-        // Recherche de phrase exacte
-        query.$text = { $search: `"${keyword}"` };
-      } else if (searchMode === 'allWords') {
-        // Tous les mots doivent être présents (AND)
-        const words = keyword.split(/\s+/).filter(Boolean);
-        if (words.length > 0) {
-          query.$text = { $search: words.join(' ') };
-          // Nous devons vérifier que tous les mots sont présents
-          query.$text.$language = 'french';
-          query.$text.$caseSensitive = false;
-          query.$text.$diacriticSensitive = false;
+    if (keyword && keyword.trim()) {
+      try {
+        if (searchMode === 'exactPhrase') {
+          // Recherche de phrase exacte
+          query.$text = { $search: `"${keyword}"` };
+        } else if (searchMode === 'allWords') {
+          // Tous les mots doivent être présents (AND)
+          const words = keyword.split(/\s+/).filter(Boolean);
+          if (words.length > 0) {
+            query.$text = { $search: words.join(' ') };
+            // Nous devons vérifier que tous les mots sont présents
+            query.$text.$language = 'french';
+            query.$text.$caseSensitive = false;
+            query.$text.$diacriticSensitive = false;
+          }
+        } else {
+          // Un des mots suffit (OR) - mode par défaut
+          query.$text = { $search: keyword };
         }
-      } else {
-        // Un des mots suffit (OR) - mode par défaut
-        query.$text = { $search: keyword };
+      } catch (textSearchError) {
+        console.error('Erreur dans la construction de la recherche textuelle:', textSearchError);
+        // Continuer sans la recherche textuelle
       }
     }
     
     // Filtrer par auteur
-    if (author) {
-      const authorRegex = new RegExp(author, 'i');
-      const authors = await User.find({ username: { $regex: authorRegex } }).select('_id');
-      query.author = { $in: authors.map(a => a._id) };
+    if (author && author.trim()) {
+      try {
+        const authorRegex = new RegExp(author, 'i');
+        const authors = await User.find({ username: { $regex: authorRegex } }).select('_id');
+        if (authors && authors.length > 0) {
+          query.author = { $in: authors.map(a => a._id) };
+        }
+      } catch (authorError) {
+        console.error('Erreur lors de la recherche des auteurs:', authorError);
+        // Continuer sans ce filtre
+      }
     }
     
     // Filtrer par intervalle de temps
     if (startDate || endDate) {
       query.createdAt = {};
       if (startDate) {
-        query.createdAt.$gte = new Date(startDate);
+        try {
+          query.createdAt.$gte = new Date(startDate);
+        } catch (dateError) {
+          console.error('Erreur avec la date de début:', dateError);
+          // Continuer sans ce filtre
+        }
       }
       if (endDate) {
-        // Ajouter 1 jour pour inclure tout le jour de fin
-        const endDateObj = new Date(endDate);
-        endDateObj.setDate(endDateObj.getDate() + 1);
-        query.createdAt.$lte = endDateObj;
+        try {
+          // Ajouter 1 jour pour inclure tout le jour de fin
+          const endDateObj = new Date(endDate);
+          endDateObj.setDate(endDateObj.getDate() + 1);
+          query.createdAt.$lte = endDateObj;
+        } catch (dateError) {
+          console.error('Erreur avec la date de fin:', dateError);
+          // Continuer sans ce filtre
+        }
       }
     }
     
     // Filtrer par forum
     if (forumId) {
-      query.forum = forumId;
-      
-      // Vérifier si l'utilisateur a accès au forum
-      const forum = await Forum.findById(forumId);
-      if (!forum) {
-        return res.status(404).json({ message: 'Forum non trouvé.' });
-      }
-      
-      if (forum.type === 'closed' && req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
+      try {
+        query.forum = forumId;
+        
+        // Vérifier si l'utilisateur a accès au forum
+        const forum = await Forum.findById(forumId);
+        if (!forum) {
+          return res.status(404).json({ message: 'Forum non trouvé.' });
+        }
+        
+        if (forum.type === 'closed' && req.user.role !== 'admin') {
+          return res.status(403).json({ message: 'Vous n\'avez pas accès à ce forum.' });
+        }
+      } catch (forumError) {
+        console.error('Erreur lors de la vérification du forum:', forumError);
+        // Continuer sans ce filtre
       }
     } else {
       // Si aucun forum n'est spécifié, exclure les messages des forums fermés pour les non-admins
       if (req.user.role !== 'admin') {
-        const closedForums = await Forum.find({ type: 'closed' }).select('_id');
-        query.forum = { $nin: closedForums.map(f => f._id) };
+        try {
+          const closedForums = await Forum.find({ type: 'closed' }).select('_id');
+          if (closedForums && closedForums.length > 0) {
+            query.forum = { $nin: closedForums.map(f => f._id) };
+          }
+        } catch (forumError) {
+          console.error('Erreur lors de la récupération des forums fermés:', forumError);
+          // Continuer sans ce filtre
+        }
       }
     }
     
@@ -571,32 +605,46 @@ exports.searchMessages = async (req, res) => {
     }
     
     // Exécuter la recherche
-    let messages;
+    let messages = [];
     
-    if (keyword && sortBy === 'relevance') {
-      // Si on cherche par pertinence avec des mots-clés, on ajoute le score de pertinence
-      messages = await Message.find(query, { score: { $meta: 'textScore' } })
-        .populate('author', 'username profilePicture')
-        .populate('forum', 'name')
-        .sort(sortOptions)
-        .limit(100);
-    } else {
-      messages = await Message.find(query)
-        .populate('author', 'username profilePicture')
-        .populate('forum', 'name')
-        .sort(sortOptions)
-        .limit(100);
+    try {
+      if (keyword && sortBy === 'relevance') {
+        // Si on cherche par pertinence avec des mots-clés, on ajoute le score de pertinence
+        messages = await Message.find(query, { score: { $meta: 'textScore' } })
+          .populate('author', 'username profilePicture')
+          .populate('forum', 'name')
+          .sort(sortOptions)
+          .limit(100);
+      } else {
+        messages = await Message.find(query)
+          .populate('author', 'username profilePicture')
+          .populate('forum', 'name')
+          .sort(sortOptions)
+          .limit(100);
+      }
+    
+      // Si le tri est par auteur, on doit le faire manuellement après avoir récupéré les données
+      if (sortBy === 'author' && Array.isArray(messages)) {
+        messages.sort((a, b) => {
+          const usernameA = a.author?.username?.toLowerCase() || '';
+          const usernameB = b.author?.username?.toLowerCase() || '';
+          return sortOrder === 'desc' 
+            ? usernameB.localeCompare(usernameA, 'fr')
+            : usernameA.localeCompare(usernameB, 'fr');
+        });
+      }
+    } catch (searchError) {
+      console.error('Erreur lors de la requête de recherche:', searchError);
+      return res.status(500).json({ 
+        message: 'Erreur lors de l\'exécution de la recherche.', 
+        error: searchError.message 
+      });
     }
     
-    // Si le tri est par auteur, on doit le faire manuellement après avoir récupéré les données
-    if (sortBy === 'author') {
-      messages.sort((a, b) => {
-        const usernameA = a.author?.username?.toLowerCase() || '';
-        const usernameB = b.author?.username?.toLowerCase() || '';
-        return sortOrder === 'desc' 
-          ? usernameB.localeCompare(usernameA, 'fr')
-          : usernameA.localeCompare(usernameB, 'fr');
-      });
+    // S'assurer que messages est bien un tableau
+    if (!Array.isArray(messages)) {
+      console.warn('Résultat de recherche non valide, retour d\'un tableau vide');
+      messages = [];
     }
     
     console.log(`Recherche terminée: ${messages.length} résultats trouvés`);
@@ -604,7 +652,11 @@ exports.searchMessages = async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     console.error('Erreur dans la recherche de messages:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la recherche.', error: error.message });
+    res.status(500).json({ 
+      message: 'Erreur serveur lors de la recherche.', 
+      error: error.message,
+      results: [] // Toujours renvoyer un tableau vide en cas d'erreur
+    });
   }
 };
 
