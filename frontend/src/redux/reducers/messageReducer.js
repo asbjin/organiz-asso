@@ -66,6 +66,7 @@ export default function messageReducer(state = initialState, action) {
     case SEARCH_MESSAGES:
       return {
         ...state,
+        messages: payload,
         searchResults: payload,
         loading: false
       };
