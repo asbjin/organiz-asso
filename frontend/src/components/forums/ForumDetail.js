@@ -430,7 +430,7 @@ const ForumDetail = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2>{forum.name}</h2>
-          <p className="text-white">
+          <p className="text-muted">
             {forum.description}
             {messages.length > 0 && (
               <span className="badge bg-info ms-2">{messages.length} message{messages.length > 1 ? 's' : ''}</span>
