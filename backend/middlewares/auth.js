@@ -6,7 +6,7 @@ exports.isAuthenticated = async (req, res, next) => {
   try {
     // Récupérer le token JWT depuis les cookies ou l'en-tête Authorization
     const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
-    
+
     console.log('Auth - Method:', req.method, 'URL:', req.originalUrl);
     console.log('Auth - Cookies:', req.cookies);
     console.log('Auth - Headers Auth:', req.headers.authorization);

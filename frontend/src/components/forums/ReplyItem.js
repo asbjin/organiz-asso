@@ -84,7 +84,21 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
               style={{ width: '30px', height: '30px' }}
             />
           ) : (
-            <div className="author-avatar-initials" style={{ width: '30px', height: '30px', fontSize: '14px' }}>
+            <div 
+              className="author-avatar-initials"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                backgroundColor: '#007bff',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}
+            >
               {getUserInitials(reply.author?.username)}
             </div>
           )}

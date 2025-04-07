@@ -269,7 +269,7 @@ const AdvancedSearch = () => {
     }
     return <div className="suggestion-avatar">{user.username.charAt(0).toUpperCase()}</div>;
   };
-  
+
   return (
     <Card className="search-container">
       <Card.Body>
@@ -300,17 +300,17 @@ const AdvancedSearch = () => {
                   >
                     {isLoading ? 
                       <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> :
-                      <BsSearch />
+                    <BsSearch />
                     }
                   </Button>
                   {formValues.keywords && (
-                    <Button 
-                      variant="outline-secondary" 
+                  <Button 
+                    variant="outline-secondary" 
                       onClick={() => setFormValues(prev => ({ ...prev, keywords: '' }))}
                       aria-label="Effacer la recherche"
-                    >
-                      <BsX />
-                    </Button>
+                  >
+                    <BsX />
+                  </Button>
                   )}
                 </InputGroup>
               </Form.Group>
@@ -371,13 +371,13 @@ const AdvancedSearch = () => {
                     <Form.Label htmlFor="author">Auteur</Form.Label>
                     <InputGroup>
                       <InputGroup.Text><BsPerson /></InputGroup.Text>
-                      <Form.Control
-                        id="author"
-                        name="author"
-                        type="text"
-                        placeholder="Nom de l'auteur"
+                    <Form.Control
+                      id="author"
+                      name="author"
+                      type="text"
+                      placeholder="Nom de l'auteur"
                         value={formValues.author}
-                        onChange={handleChange}
+                      onChange={handleChange}
                         onFocus={() => formValues.author.length >= 2 && setShowAuthorSuggestions(true)}
                         onKeyDown={(e) => handleKeyDown(e, authorSuggestions, selectAuthorSuggestion)}
                         autoComplete="off"
@@ -413,13 +413,13 @@ const AdvancedSearch = () => {
                     <Form.Label htmlFor="forum">Forum</Form.Label>
                     <InputGroup>
                       <InputGroup.Text><BsChat /></InputGroup.Text>
-                      <Form.Control
-                        id="forum"
-                        name="forum"
-                        type="text"
-                        placeholder="Nom du forum"
+                    <Form.Control
+                      id="forum"
+                      name="forum"
+                      type="text"
+                      placeholder="Nom du forum"
                         value={formValues.forum}
-                        onChange={handleChange}
+                      onChange={handleChange}
                         onFocus={() => formValues.forum.length >= 2 && setShowForumSuggestions(true)}
                         onKeyDown={(e) => handleKeyDown(e, forumSuggestions, selectForumSuggestion)}
                         autoComplete="off"
@@ -464,13 +464,13 @@ const AdvancedSearch = () => {
                     <div className="date-picker-container">
                       <InputGroup>
                         <InputGroup.Text><BsCalendar /></InputGroup.Text>
-                        <Form.Control
-                          id="startDate"
-                          name="startDate"
-                          type="date"
+                    <Form.Control
+                      id="startDate"
+                      name="startDate"
+                      type="date"
                           placeholder="Date de début"
                           value={formValues.startDate}
-                          onChange={handleChange}
+                      onChange={handleChange}
                           aria-label="Date de début"
                         />
                       </InputGroup>
@@ -478,15 +478,15 @@ const AdvancedSearch = () => {
                     <div className="date-picker-container">
                       <InputGroup>
                         <InputGroup.Text><BsCalendar /></InputGroup.Text>
-                        <Form.Control
-                          id="endDate"
-                          name="endDate"
-                          type="date"
+                    <Form.Control
+                      id="endDate"
+                      name="endDate"
+                      type="date"
                           placeholder="Date de fin"
                           value={formValues.endDate}
-                          onChange={handleChange}
+                      onChange={handleChange}
                           aria-label="Date de fin"
-                        />
+                    />
                       </InputGroup>
                     </div>
                   </div>
@@ -514,15 +514,15 @@ const AdvancedSearch = () => {
                   <Form.Group>
                     <Form.Label htmlFor="sortOrder">Ordre</Form.Label>
                     <InputGroup>
-                      <Form.Select
-                        id="sortOrder"
-                        name="sortOrder"
+                    <Form.Select
+                      id="sortOrder"
+                      name="sortOrder"
                         value={formValues.sortOrder}
-                        onChange={handleChange}
-                      >
-                        <option value="desc">Décroissant</option>
-                        <option value="asc">Croissant</option>
-                      </Form.Select>
+                      onChange={handleChange}
+                    >
+                      <option value="desc">Décroissant</option>
+                      <option value="asc">Croissant</option>
+                    </Form.Select>
                       <InputGroup.Text>
                         {formValues.sortOrder === 'desc' ? <BsSortDown /> : <BsSortUp />}
                       </InputGroup.Text>
@@ -552,7 +552,7 @@ const AdvancedSearch = () => {
                   ) : (
                     <>
                       <BsSearch className="me-2" />
-                      Rechercher
+                  Rechercher
                     </>
                   )}
                 </Button>

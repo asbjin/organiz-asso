@@ -28,12 +28,6 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId })
     }
   }, [isTargeted, reply._id]);
   
-  // Fonction pour obtenir les initiales du nom d'utilisateur
-  const getUserInitials = (username) => {
-    if (!username) return '?';
-    return username.charAt(0).toUpperCase();
-  };
-  
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!replyContent.trim() || submitting) return;
@@ -86,20 +80,14 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId })
       >
         <div className="d-flex justify-content-between">
           <div className="d-flex align-items-center">
-            {reply.author.profilePicture ? (
-              <img
-                src={reply.author.profilePicture}
-                alt={reply.author.username}
-                className="rounded-circle me-2"
-                width="40"
-                height="40"
-                style={{ opacity: isDeleted ? 0.5 : 1 }}
-              />
-            ) : (
-              <div className="author-avatar-initials">
-                {getUserInitials(reply.author.username)}
-              </div>
-            )}
+            <img
+              src={reply.author.profilePicture || "https://via.placeholder.com/40"}
+              alt={reply.author.username}
+              className="rounded-circle me-2"
+              width="40"
+              height="40"
+              style={{ opacity: isDeleted ? 0.5 : 1 }}
+            />
             <div>
               <Link to={`/profile/${reply.author._id}`} className="fw-bold text-decoration-none">
                 {reply.author.username}
@@ -208,12 +196,6 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId })
       )}
     </div>
   );
-};
-
-// Fonction pour obtenir les initiales du nom d'utilisateur
-const getUserInitials = (username) => {
-  if (!username) return '?';
-  return username.charAt(0).toUpperCase();
 };
 
 const MessageDetail = () => {
@@ -667,20 +649,14 @@ const MessageDetail = () => {
       <Card className={`mb-4 shadow-sm message-card ${message.isDeleted ? 'bg-light message-deleted' : ''}`}>
         <Card.Header className="d-flex justify-content-between bg-light">
           <div className="d-flex align-items-center">
-            {message.author.profilePicture ? (
-              <img
-                src={message.author.profilePicture}
-                alt={message.author.username}
-                className="rounded-circle me-2"
-                width="40"
-                height="40"
-                style={{ opacity: message.isDeleted ? 0.5 : 1 }}
-              />
-            ) : (
-              <div className="author-avatar-initials">
-                {getUserInitials(message.author.username)}
-              </div>
-            )}
+            <img
+              src={message.author.profilePicture || "https://via.placeholder.com/40"}
+              alt={message.author.username}
+              className="rounded-circle me-2"
+              width="40"
+              height="40"
+              style={{ opacity: message.isDeleted ? 0.5 : 1 }}
+            />
             <div>
               <Link to={`/profile/${message.author._id}`} className="fw-bold text-decoration-none">
                 {message.author.username}

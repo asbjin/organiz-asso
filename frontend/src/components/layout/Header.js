@@ -61,8 +61,8 @@ function Header() {
 
         {/* Recherche pour desktop */}
         <div className="search-container d-none d-md-block">
-          <Form onSubmit={handleSearch}>
-            <div className="position-relative">
+          <Form onSubmit={handleSearch} className="w-100">
+            <div className="position-relative d-flex align-items-center">
               <Form.Control
                 type="text"
                 placeholder="Rechercher dans Organiz'asso..."
@@ -70,7 +70,7 @@ function Header() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Button type="submit" className="position-absolute top-0 end-0 search-btn">
+              <Button type="submit" className="position-absolute end-0 search-btn">
                 <BsSearch />
               </Button>
             </div>
