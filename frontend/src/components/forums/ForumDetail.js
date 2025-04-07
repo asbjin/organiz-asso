@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { Card, Button, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ const ForumDetail = () => {
   const { id } = useParams();
   const { currentUser } = useAuth();
   const { joinForum, leaveForum, sendMessage, socket, connected } = useSocket();
+  const location = useLocation();
   
   const [forum, setForum] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -24,6 +25,17 @@ const ForumDetail = () => {
     messageId: null,
     content: ''
   });
+  const [targetReplyId, setTargetReplyId] = useState(null);
+  
+  // Effet pour extraire l'id du message ciblé à partir du hash de l'URL
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash && hash.startsWith('#reply-')) {
+      const targetId = hash.replace('#reply-', '');
+      setTargetReplyId(targetId);
+      console.log(`Message ciblé dans forum: ${targetId}`);
+    }
+  }, [location.hash]);
   
   // Définir fetchForumData au niveau global du composant pour pouvoir l'utiliser dans d'autres fonctions
   const fetchForumData = async () => {
@@ -418,7 +430,7 @@ const ForumDetail = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2>{forum.name}</h2>
-          <p className="text-muted">
+          <p className="text-white">
             {forum.description}
             {messages.length > 0 && (
               <span className="badge bg-info ms-2">{messages.length} message{messages.length > 1 ? 's' : ''}</span>
@@ -602,13 +614,11 @@ const ForumDetail = () => {
                     {replies[message._id].data && replies[message._id].data.length > 0 ? (
                       replies[message._id].data.map(reply => (
                         <ReplyItem 
-                          key={reply._id} 
-                          reply={{
-                            ...reply,
-                            isCurrentUserAuthor: (currentUser && currentUser.id === reply.author?._id) || currentUser.role === 'admin'
-                          }} 
+                          key={reply._id}
+                          reply={reply}
                           onDelete={handleDeleteMessage}
                           onReply={handleReply}
+                          targetReplyId={targetReplyId}
                         />
                       ))
                     ) : !replies[message._id].loading ? (
