@@ -467,7 +467,7 @@
   opacity: 1;
 }
 
-/* Style pour les avatars à initiales */
+/* Style pour les avatars avec initiales */
 .author-avatar-initials {
   width: 40px;
   height: 40px;
@@ -479,8 +479,24 @@
   justify-content: center;
   font-weight: bold;
   font-size: 18px;
-  text-transform: uppercase;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-right: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles spécifiques pour la page ForumDetail */
+.message-author {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.author-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* Styles pour les messages */
@@ -502,20 +518,6 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
-}
-
-.message-author {
-  display: flex;
-  align-items: center;
-}
-
-.author-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-  object-fit: cover;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .author-name {

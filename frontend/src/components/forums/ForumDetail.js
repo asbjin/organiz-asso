@@ -536,7 +536,8 @@ const ForumDetail = () => {
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontWeight: 'bold',
-                          fontSize: '18px'
+                          fontSize: '18px',
+                          marginRight: '10px'
                         }}
                       >
                         {getUserInitials(message.author?.username)}
