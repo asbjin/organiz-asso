@@ -1,18 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { Card, Button, Form, Spinner, Alert, ListGroup } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
 
 // Composant pour afficher une réponse et ses réponses enfants
-const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
+const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId }) => {
   const { currentUser } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(reply.isDeleted || false);
+  const replyRef = useRef(null);
+  
+  // Mettre en évidence le message ciblé
+  const isTargeted = targetReplyId === reply._id;
+  
+  // Faire défiler jusqu'à la réponse si c'est celle qui est ciblée
+  useEffect(() => {
+    if (isTargeted && replyRef.current) {
+      // Petit délai pour s'assurer que le DOM est complètement chargé
+      setTimeout(() => {
+        replyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [isTargeted, reply._id]);
   
   const handleReplySubmit = async (e) => {
     e.preventDefault();
@@ -50,6 +64,8 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
   return (
     <div>
       <ListGroup.Item 
+        id={`reply-${reply._id}`}
+        ref={replyRef}
         className={`nested-reply ${depthClass} ${isDeleted ? 'message-deleted' : ''}`}
         style={{ 
           paddingLeft: `${depth * 25}px`, 
@@ -57,7 +73,9 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
           marginBottom: '10px',
           marginLeft: depth > 0 ? '10px' : '0px',
           borderRadius: '8px',
-          backgroundColor: isDeleted ? '#f8f8f8' : (depth % 2 === 0 ? 'white' : '#f9f9ff')
+          backgroundColor: isDeleted ? '#f8f8f8' : (depth % 2 === 0 ? 'white' : '#f9f9ff'),
+          border: isTargeted ? '1px solid #e0e0e0' : 'none',
+          transition: 'border 0.3s ease'
         }}
       >
         <div className="d-flex justify-content-between">
@@ -171,6 +189,7 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0 }) => {
               onReply={onReply}
               parentId={reply._id}
               depth={depth + 1}
+              targetReplyId={targetReplyId}
             />
           ))}
         </div>
@@ -183,6 +202,7 @@ const MessageDetail = () => {
   const { id } = useParams();
   const { currentUser } = useAuth();
   const { joinForum, leaveForum, sendMessage, socket, connected } = useSocket();
+  const location = useLocation();
   
   const [message, setMessage] = useState(null);
   const [replies, setReplies] = useState([]);
@@ -192,6 +212,7 @@ const MessageDetail = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(null);
+  const [targetReplyId, setTargetReplyId] = useState(null);
 
   // État pour suivre si une opération de suppression est en cours
   const [deleteOperation, setDeleteOperation] = useState({
@@ -236,6 +257,16 @@ const MessageDetail = () => {
     // Appeler la fonction de suppression
     handleDeleteMessage(messageId);
   };
+
+  // Effet pour extraire l'id du message ciblé à partir du hash de l'URL
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash && hash.startsWith('#reply-')) {
+      const targetId = hash.replace('#reply-', '');
+      setTargetReplyId(targetId);
+      console.log(`Message ciblé: ${targetId}`);
+    }
+  }, [location.hash]);
 
   // Effet pour gérer la redirection automatique en cas d'erreur
   useEffect(() => {
@@ -575,7 +606,7 @@ const MessageDetail = () => {
     return (
       <div className="text-center">
         <Alert variant="danger" className="mb-4">
-          {error}
+          {typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}
         </Alert>
         <p>Le message que vous cherchez a peut-être été supprimé ou n'a jamais existé.</p>
         <div className="mt-4">
@@ -720,6 +751,7 @@ const MessageDetail = () => {
                   onReply={handleReply}
                   parentId={id}
                   depth={0}
+                  targetReplyId={targetReplyId}
                 />
               ))}
             </ListGroup>

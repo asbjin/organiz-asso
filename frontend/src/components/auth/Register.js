@@ -81,7 +81,7 @@ const Register = () => {
         <Card>
           <Card.Body>
             <h2 className="text-center mb-4">Inscription</h2>
-            {error && <Alert variant="danger">{error}</Alert>}
+            {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
             {success && <Alert variant="success">{success}</Alert>}
             <Form onSubmit={handleSubmit}>
               <Form.Group id="username" className="mb-3">

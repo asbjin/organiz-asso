@@ -58,7 +58,7 @@ const PendingUsers = () => {
     <div>
       <h2 className="mb-4">Utilisateurs en attente de validation</h2>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
       
       {pendingUsers.length === 0 ? (

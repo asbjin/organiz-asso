@@ -65,9 +65,14 @@ const ForumList = () => {
       setError(null);
       const data = await getForums();
       
+      // Filtrer les forums privés pour les utilisateurs non-admin
+      const filteredForums = data.filter(forum => 
+        forum.type !== 'closed' || (currentUser && currentUser.role === 'admin')
+      );
+      
       // Récupérer le nombre de messages pour chaque forum
       const forumsWithMessageCount = await Promise.all(
-        data.map(async (forum) => {
+        filteredForums.map(async (forum) => {
           try {
             const messageCount = await getForumMessageCount(forum._id);
             return {
@@ -103,6 +108,12 @@ const ForumList = () => {
     e.preventDefault();
     if (!newForumName || !newForumDescription) {
       setCreateError('Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    // Vérifier si l'utilisateur est admin
+    if (currentUser && currentUser.role !== 'admin') {
+      setCreateError('Vous n\'avez pas les droits nécessaires pour créer un forum.');
       return;
     }
 
@@ -205,7 +216,7 @@ const ForumList = () => {
           <p className="text-muted">Découvrez et participez aux discussions</p>
         </div>
         <div className="action-section">
-          {currentUser && (
+          {currentUser && currentUser.role === 'admin' && (
             <Button 
               variant="primary" 
               className="create-forum-btn"
@@ -248,7 +259,7 @@ const ForumList = () => {
           <div className="empty-icon">🏝️</div>
           <h3>Aucun forum disponible</h3>
           <p>Soyez le premier à créer un forum pour commencer les discussions!</p>
-          {currentUser && (
+          {currentUser && currentUser.role === 'admin' && (
             <Button variant="primary" onClick={() => setShowModal(true)}>
               Créer votre premier forum
             </Button>
@@ -324,78 +335,84 @@ const ForumList = () => {
         <Modal.Body>
           {createError && (
             <Alert variant="danger" className="creation-error">
-              {createError}
+              {typeof createError === 'object' ? createError.msg || createError.message || JSON.stringify(createError) : createError}
             </Alert>
           )}
-          <Form onSubmit={handleCreateForum}>
-            <Form.Group className="mb-3">
-              <Form.Label>Nom du forum *</Form.Label>
-              <Form.Control 
-                type="text" 
-                value={newForumName}
-                onChange={(e) => setNewForumName(e.target.value)}
-                placeholder="Entrez le nom du forum"
-                className="creation-input"
-                required
-              />
-              <Form.Text className="text-muted">
-                Choisissez un nom clair et descriptif (max 50 caractères)
-              </Form.Text>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Description *</Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={3}
-                value={newForumDescription}
-                onChange={(e) => setNewForumDescription(e.target.value)}
-                placeholder="Décrivez l'objectif de ce forum"
-                className="creation-textarea"
-                required
-              />
-              <Form.Text className="text-muted">
-                Expliquez le sujet du forum et les règles de base
-              </Form.Text>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Type de forum</Form.Label>
-              <div className="forum-type-options">
-                <div 
-                  className={`forum-type-option ${newForumType === 'open' ? 'selected' : ''}`}
-                  onClick={() => setNewForumType('open')}
-                >
-                  <div className="option-icon">🌐</div>
-                  <div className="option-info">
-                    <h5>Public</h5>
-                    <p>Visible et accessible par tous les membres</p>
+          {currentUser && currentUser.role !== 'admin' ? (
+            <Alert variant="warning">
+              Vous n'avez pas les droits nécessaires pour créer un forum.
+            </Alert>
+          ) : (
+            <Form onSubmit={handleCreateForum}>
+              <Form.Group className="mb-3">
+                <Form.Label>Nom du forum *</Form.Label>
+                <Form.Control 
+                  type="text" 
+                  value={newForumName}
+                  onChange={(e) => setNewForumName(e.target.value)}
+                  placeholder="Entrez le nom du forum"
+                  className="creation-input"
+                  required
+                />
+                <Form.Text className="text-muted">
+                  Choisissez un nom clair et descriptif (max 50 caractères)
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Description *</Form.Label>
+                <Form.Control 
+                  as="textarea" 
+                  rows={3}
+                  value={newForumDescription}
+                  onChange={(e) => setNewForumDescription(e.target.value)}
+                  placeholder="Décrivez l'objectif de ce forum"
+                  className="creation-textarea"
+                  required
+                />
+                <Form.Text className="text-muted">
+                  Expliquez le sujet du forum et les règles de base
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Type de forum</Form.Label>
+                <div className="forum-type-options">
+                  <div 
+                    className={`forum-type-option ${newForumType === 'open' ? 'selected' : ''}`}
+                    onClick={() => setNewForumType('open')}
+                  >
+                    <div className="option-icon">🌐</div>
+                    <div className="option-info">
+                      <h5>Public</h5>
+                      <p>Visible et accessible par tous les membres</p>
+                    </div>
+                  </div>
+                  <div 
+                    className={`forum-type-option ${newForumType === 'closed' ? 'selected' : ''}`}
+                    onClick={() => setNewForumType('closed')}
+                  >
+                    <div className="option-icon">🔒</div>
+                    <div className="option-info">
+                      <h5>Privé</h5>
+                      <p>Accès restreint aux administrateurs</p>
+                    </div>
                   </div>
                 </div>
-                <div 
-                  className={`forum-type-option ${newForumType === 'closed' ? 'selected' : ''}`}
-                  onClick={() => setNewForumType('closed')}
+              </Form.Group>
+              <div className="modal-actions">
+                <Button variant="outline-secondary" onClick={() => setShowModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  variant="primary" 
+                  type="submit" 
+                  disabled={creating || !newForumName || !newForumDescription}
+                  className="create-button"
                 >
-                  <div className="option-icon">🔒</div>
-                  <div className="option-info">
-                    <h5>Privé</h5>
-                    <p>Accès restreint aux administrateurs</p>
-                  </div>
-                </div>
+                  {creating ? 'Création en cours...' : 'Créer le forum'}
+                </Button>
               </div>
-            </Form.Group>
-            <div className="modal-actions">
-              <Button variant="outline-secondary" onClick={() => setShowModal(false)}>
-                Annuler
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit" 
-                disabled={creating || !newForumName || !newForumDescription}
-                className="create-button"
-              >
-                {creating ? 'Création en cours...' : 'Créer le forum'}
-              </Button>
-            </div>
-          </Form>
+            </Form>
+          )}
         </Modal.Body>
       </Modal>
     </Container>

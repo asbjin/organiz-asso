@@ -44,7 +44,16 @@ const ForumDetail = () => {
       
       // Récupérer les détails du forum
       const forumRes = await axios.get(`http://localhost:5000/api/forums/${id}`, { withCredentials: true });
-      setForum(forumRes.data);
+      const forumData = forumRes.data;
+      
+      // Vérifier si l'utilisateur a accès au forum privé
+      if (forumData.type === 'closed' && currentUser.role !== 'admin') {
+        setError('Vous n\'avez pas les droits nécessaires pour accéder à ce forum privé.');
+        setLoading(false);
+        return;
+      }
+      
+      setForum(forumData);
       
       // Récupérer les messages du forum
       const messagesRes = await axios.get(`http://localhost:5000/api/messages/forum/${id}`, { withCredentials: true });
@@ -63,7 +72,11 @@ const ForumDetail = () => {
       
       setError('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors du chargement du forum');
+      if (err.response?.status === 403) {
+        setError('Vous n\'avez pas les droits nécessaires pour accéder à ce forum privé.');
+      } else {
+        setError(err.response?.data?.message || 'Erreur lors du chargement du forum');
+      }
       console.error(err);
     } finally {
       setLoading(false);

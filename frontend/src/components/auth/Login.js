@@ -33,7 +33,7 @@ const Login = () => {
         <Card>
           <Card.Body>
             <h2 className="text-center mb-4">Connexion</h2>
-            {error && <Alert variant="danger">{error}</Alert>}
+            {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
             <Form onSubmit={handleSubmit}>
               <Form.Group id="email" className="mb-3">
                 <Form.Label>Email</Form.Label>

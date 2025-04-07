@@ -118,8 +118,8 @@ const SearchResults = ({ results = [], searchQuery = '', isLoading }) => {
         <Card.Body>
           <div className="search-result-header">
             <Card.Title className="search-result-title">
-              <Link to={`/message/${message._id}`}>
-                {message.title || 'Message sans titre'}
+              <Link to={`/forum/${message.forum._id || message.forum}${message.parentMessage ? `#reply-${message._id}` : ''}`}>
+                {message.title || `Message de ${message.author?.username || 'Utilisateur inconnu'}`}
               </Link>
             </Card.Title>
             <Badge bg="secondary" className="search-result-forum">

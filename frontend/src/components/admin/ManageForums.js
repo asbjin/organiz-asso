@@ -136,7 +136,7 @@ const ManageForums = () => {
         </Button>
       </div>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
       {success && <Alert variant="success">{success}</Alert>}
       
       {forums.length === 0 ? (

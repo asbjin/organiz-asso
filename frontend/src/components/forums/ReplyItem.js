@@ -1,13 +1,26 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button, Form, Spinner } from 'react-bootstrap';
 import { BsReply, BsPencil, BsTrash } from 'react-icons/bs';
 
 // Composant pour afficher une réponse individuelle
-const ReplyItem = ({ reply, onDelete, onReply, depth = 0 }) => {
+const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const replyRef = useRef(null);
+  
+  // Déterminer si cette réponse est ciblée
+  const isTargeted = targetReplyId === reply._id;
+  
+  // Faire défiler jusqu'à la réponse si elle est ciblée
+  useEffect(() => {
+    if (isTargeted && replyRef.current) {
+      setTimeout(() => {
+        replyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [isTargeted, targetReplyId]);
 
   // Protection contre les données invalides
   if (!reply || typeof reply !== 'object') {
@@ -38,7 +51,17 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0 }) => {
   const depthClass = `reply-level-${depth % 6}`;
 
   return (
-    <div className={`reply-item ${depthClass}`}>
+    <div 
+      id={`reply-${reply._id}`}
+      ref={replyRef}
+      className={`reply-item ${depthClass} ${isTargeted ? 'targeted-reply' : ''}`}
+      style={{
+        border: isTargeted ? '1px solid #e0e0e0' : 'none',
+        borderRadius: isTargeted ? '8px' : '0',
+        padding: isTargeted ? '8px' : '0',
+        transition: 'border 0.3s ease'
+      }}
+    >
       <div className="message-header">
         <div className="message-author">
           <img 
@@ -150,6 +173,7 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0 }) => {
                 onDelete={onDelete}
                 onReply={onReply}
                 depth={depth + 1} 
+                targetReplyId={targetReplyId}
               />
             ))}
         </div>

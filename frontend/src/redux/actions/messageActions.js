@@ -284,7 +284,7 @@ export const searchMessages = (searchParams) => async (dispatch) => {
     }
     
     // Construire l'URL avec les paramètres
-    const searchUrl = `${API_URL}/messages/search?${params.toString()}`;
+    const searchUrl = `http://localhost:5000/api/messages/test-search?${params.toString()}`;
     console.log('URL de recherche:', searchUrl);
 
     const res = await axios.get(searchUrl);

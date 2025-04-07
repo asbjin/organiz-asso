@@ -144,7 +144,7 @@ const AdminDashboard = () => {
     <div>
       <h2 className="mb-4">Tableau de bord administrateur</h2>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <Alert variant="danger">{typeof error === 'object' ? error.msg || error.message || JSON.stringify(error) : error}</Alert>}
       
       <Row className="mb-4">
         <Col md={3}>
