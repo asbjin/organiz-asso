@@ -13,6 +13,12 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
   // Déterminer si cette réponse est ciblée
   const isTargeted = targetReplyId === reply._id;
   
+  // Fonction pour obtenir les initiales du nom d'utilisateur
+  const getUserInitials = (username) => {
+    if (!username) return '?';
+    return username.charAt(0).toUpperCase();
+  };
+  
   // Faire défiler jusqu'à la réponse si elle est ciblée
   useEffect(() => {
     if (isTargeted && replyRef.current) {
@@ -64,12 +70,32 @@ const ReplyItem = ({ reply, onDelete, onReply, depth = 0, targetReplyId }) => {
     >
       <div className="message-header">
         <div className="message-author">
-          <img 
-            src={reply.author?.profilePicture || "https://via.placeholder.com/30"} 
-            alt={reply.author?.username || "Utilisateur"} 
-            className="author-avatar"
-            style={{ width: '30px', height: '30px' }}
-          />
+          {reply.author?.profilePicture ? (
+            <img 
+              src={reply.author.profilePicture} 
+              alt={reply.author?.username || "Utilisateur"} 
+              className="author-avatar"
+              style={{ width: '30px', height: '30px' }}
+            />
+          ) : (
+            <div 
+              className="author-avatar-initials"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                backgroundColor: '#007bff',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}
+            >
+              {getUserInitials(reply.author?.username)}
+            </div>
+          )}
           <span className="author-name">{reply.author?.username || "Utilisateur"}</span>
         </div>
         <small className="text-muted">

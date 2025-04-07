@@ -424,6 +424,12 @@ const ForumDetail = () => {
     }
   };
   
+  // Fonction pour obtenir les initiales du nom d'utilisateur
+  const getUserInitials = (username) => {
+    if (!username) return '?';
+    return username.charAt(0).toUpperCase();
+  };
+  
   if (loading) {
     return (
       <div className="d-flex justify-content-center my-5">
@@ -511,11 +517,31 @@ const ForumDetail = () => {
               >
                 <div className="message-header">
                   <div className="message-author">
-                    <img 
-                      src={message.author?.profilePicture || "https://via.placeholder.com/40"} 
-                      alt={message.author?.username || "Utilisateur"} 
-                      className="author-avatar"
-                    />
+                    {message.author?.profilePicture ? (
+                      <img 
+                        src={message.author.profilePicture} 
+                        alt={message.author?.username || "Utilisateur"} 
+                        className="author-avatar"
+                      />
+                    ) : (
+                      <div 
+                        className="author-avatar-initials"
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '18px'
+                        }}
+                      >
+                        {getUserInitials(message.author?.username)}
+                      </div>
+                    )}
                     <span className="author-name">{message.author?.username || "Utilisateur"}</span>
                   </div>
                   <small className="text-muted">
