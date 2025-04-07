@@ -12,6 +12,11 @@ exports.createForum = async (req, res) => {
       return res.status(400).json({ message: 'Un forum avec ce nom existe déjà.' });
     }
     
+    // Vérifier si l'utilisateur tente de créer un forum privé sans être admin
+    if (type === 'closed' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Vous n\'avez pas les droits nécessaires pour créer un forum privé.' });
+    }
+    
     // Créer un nouveau forum
     const newForum = new Forum({
       name,

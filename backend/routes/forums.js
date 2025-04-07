@@ -7,7 +7,7 @@ const { isAuthenticated, isAdmin } = require('../middlewares/auth');
 router.get('/', isAuthenticated, forumController.getAllForums);
 
 // Route pour l'autocomplétion des noms de forums
-router.get('/autocomplete', isAuthenticated, forumController.autocompleteForums);
+router.get('/autocomplete', isAuthenticated, forumController.searchForumsByName);
 
 // Route de test sans authentification pour la recherche
 // Cette route capture les informations d'authentification si disponibles
@@ -41,8 +41,10 @@ router.get('/admin-search', isAuthenticated, isAdmin, forumController.searchAllF
 // Routes spécifiques par ID (doit être après /autocomplete et /search)
 router.get('/:id', isAuthenticated, forumController.getForumById);
 
+// Routes pour la création de forum - Permettre aux utilisateurs normaux de créer des forums publics
+router.post('/', isAuthenticated, forumController.createForum);
+
 // Routes protégées pour les administrateurs
-router.post('/', isAuthenticated, isAdmin, forumController.createForum);
 router.put('/:id', isAuthenticated, isAdmin, forumController.updateForum);
 router.delete('/:id', isAuthenticated, isAdmin, forumController.deleteForum);
 
