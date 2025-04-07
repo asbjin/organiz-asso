@@ -96,21 +96,7 @@ const Reply = ({ reply, onDelete, onReply, parentId, depth = 0, targetReplyId })
                 style={{ opacity: isDeleted ? 0.5 : 1 }}
               />
             ) : (
-              <div 
-                className="author-avatar-initials"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '18px'
-                }}
-              >
+              <div className="author-avatar-initials">
                 {getUserInitials(reply.author.username)}
               </div>
             )}
@@ -691,21 +677,7 @@ const MessageDetail = () => {
                 style={{ opacity: message.isDeleted ? 0.5 : 1 }}
               />
             ) : (
-              <div 
-                className="author-avatar-initials"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '18px'
-                }}
-              >
+              <div className="author-avatar-initials">
                 {getUserInitials(message.author.username)}
               </div>
             )}
