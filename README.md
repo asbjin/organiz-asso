@@ -53,15 +53,6 @@ Une plateforme de communication moderne pour les associations, permettant aux me
    - Vulnérabilités potentielles dans l'authentification JWT
    - Solution : Mise en place de tokens de rafraîchissement et validation renforcée
 
-## Tâches Restantes
-
-
-1. **Améliorations Techniques**
-   - [ ] Optimisation des performances de la base de données
-   - [ ] Mise en place de tests automatisés
-   - [ ] Amélioration de la documentation API
-   - [ ] Mise en place d'un système de cache
-
 ## Choix de Modélisation
 
 ### Différences avec les Suggestions du Cours
