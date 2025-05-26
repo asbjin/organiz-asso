@@ -4,12 +4,12 @@
   "description": "Plateforme d'échange de messages pour une association",
   "main": "index.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "server": "nodemon backend/server.js",
-    "client": "cd frontend && npm start",
+    "start": "node server/server.js",
+    "server": "nodemon server/server.js",
+    "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "seed": "node backend/seed.js",
-    "install-all": "npm install && cd frontend && npm install"
+    "seed": "node server/seed.js",
+    "install-all": "npm install && cd client && npm install"
   },
   "keywords": [
     "association",

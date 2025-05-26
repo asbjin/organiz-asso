@@ -1,149 +1,146 @@
 # Organiz-Asso
 
-Plateforme d'échange de messages pour une association développée avec la stack MERN (MongoDB, Express, React, Node.js).
+Une plateforme de communication moderne pour les associations, permettant aux membres de communiquer efficacement via des forums.
 
-## Description
+## Fonctionnalités Principales
 
-Organiz-Asso est une application web complète permettant aux membres d'une association de communiquer efficacement via des forums de discussion. La plateforme offre une interface moderne avec une recherche avancée, une gestion des utilisateurs et un système de messagerie.
+- **Système de Forums**
+  - Création de forums publics et privés
+  - Discussions structurées avec réponses imbriquées
+  - Modération des contenus
 
-## Fonctionnalités principales
 
-- **Système d'authentification** : Inscription, connexion et gestion des profils utilisateurs
-- **Forums de discussion** : Création et participation à des forums publics et privés
-- **Messagerie** : Système complet pour l'échange de messages entre utilisateurs
-- **Recherche avancée** : Recherche de messages, forums et utilisateurs avec interface à onglets
-- **Gestion des permissions** : Différents niveaux d'accès (admin, utilisateur standard)
-- **Interface responsive** : Adaptation à tous les appareils (desktop, mobile, tablette)
-- **Temps réel** : Notifications et mises à jour avec Socket.io
+- **Recherche Avancée**
+  - Recherche multi-critères (messages, utilisateurs, forums)
+  - Filtres et options de recherche
+  - Mise en évidence des résultats
 
-## Prérequis
+- **Gestion des Utilisateurs**
+  - Inscription et authentification sécurisée
+  - Validation par administrateur
+  - Différents niveaux d'accès (membre, admin)
 
-- Node.js (v18.0.0 ou supérieur)
-- npm (v10.0.0 ou supérieur)
-- MongoDB (v4.0.0 ou supérieur)
+## Technologies Utilisées
 
-## Structure du projet
+### Frontend
+- React 18.3.1
+- Redux 5.0.1
+- React Router 6.30.0
+- Bootstrap 5.3.3
+- Socket.io-client 4.8.1
 
-```
-organiz-asso/
-├── backend/           # Serveur Express, API REST
-│   ├── controllers/   # Logique métier
-│   ├── models/        # Modèles de données Mongoose
-│   ├── routes/        # Points d'accès API
-│   └── server.js      # Point d'entrée du backend
-├── frontend/          # Application React
-│   ├── public/        # Fichiers statiques
-│   └── src/           # Code source React
-│       ├── components/# Composants React
-│       ├── pages/     # Pages de l'application
-│       ├── redux/     # État global avec Redux
-│       └── App.js     # Point d'entrée du frontend
-└── package.json       # Dépendances et scripts npm
-```
+### Backend
+- Node.js 18+
+- Express 4.21.2
+- MongoDB avec Mongoose 8.12.1
+- JWT pour l'authentification
+- Socket.io 4.8.1
+
+
+## Problèmes Rencontrés
+
+1. **Intégration Socket.io**
+   - Difficultés initiales avec la configuration du serveur WebSocket
+   - Problèmes de synchronisation des messages en temps réel
+   - Solution : Mise en place d'un système de file d'attente pour les messages
+
+2. **Gestion des États Redux**
+   - Complexité dans la gestion des états imbriqués
+   - Problèmes de performance avec les mises à jour fréquentes
+   - Solution : Implémentation de la normalisation des données
+
+3. **Sécurité**
+   - Vulnérabilités potentielles dans l'authentification JWT
+   - Solution : Mise en place de tokens de rafraîchissement et validation renforcée
+
+## Tâches Restantes
+
+
+1. **Améliorations Techniques**
+   - [ ] Optimisation des performances de la base de données
+   - [ ] Mise en place de tests automatisés
+   - [ ] Amélioration de la documentation API
+   - [ ] Mise en place d'un système de cache
+
+## Choix de Modélisation
+
+### Différences avec les Suggestions du Cours
+
+1. **Architecture Frontend**
+   - Choix d'utiliser Redux au lieu de Context API
+   - Raison : Meilleure gestion des états complexes et outils de débogage plus puissants
+2. **Structure de la Base de Données**
+   - Utilisation de MongoDB en local avec MongoDB Compass
+   - Possibilité de basculer vers MongoDB Atlas en copiant simplement l'URL du cluster dans le fichier .env
+   - Raison : Facilité de développement en local tout en gardant la flexibilité de déploiement sur Atlas
 
 ## Installation
 
-1. Clonez le dépôt :
-   ```
-   git clone <URL-du-repo>
-   cd organiz-asso
-   ```
 
-2. Installez les dépendances :
-   ```
-   npm run install-all
+2. **Installer les dépendances du serveur**
+   ```bash
+   cd server
+   npm install
    ```
 
-3. Configurez les variables d'environnement :
-   - Créez un fichier `.env` dans le dossier `backend` avec les variables suivantes :
-   ```
-   PORT=5000
-   MONGODB_URI=votre_uri_mongodb
-   JWT_SECRET=votre_secret_jwt
+3. **Installer les dépendances du client**
+   ```bash
+   cd ../client
+   npm install
    ```
 
-4. Lancez l'application en mode développement :
-   ```
-   npm run dev
-   ```
+4. **Configuration**
+   - Créer un fichier `.env` dans le dossier `server` avec les variables suivantes :
+     ```
+     MONGODB_URI=votre_uri_mongodb
+     JWT_SECRET=votre_secret_jwt
+     PORT=5000
+     ```
 
-## Dépendances principales
+5. **Lancer l'application**
+   - Pour le serveur :
+     ```bash
+     cd server
+     npm start
+     ```
+   - Pour le client :
+     ```bash
+     cd client
+     npm start
+     ```
 
-### Backend
-- **express** (v4.21.2) : Framework web pour Node.js
-- **mongoose** (v8.12.1) : ODM pour MongoDB
-- **jsonwebtoken** (v9.0.2) : Authentification avec JWT
-- **bcrypt** (v5.1.1) : Hachage des mots de passe
-- **socket.io** (v4.8.1) : Communication en temps réel
-- **cors** (v2.8.5) : Gestion des requêtes cross-origin
-- **dotenv** (v16.4.7) : Gestion des variables d'environnement
-- **express-session** (v1.18.1) : Gestion des sessions
-- **cookie-parser** (v1.4.7) : Analyse des cookies HTTP
+## Structure du Projet
 
-### Frontend
-- **react** (v18.3.1) : Bibliothèque UI
-- **react-router-dom** (v6.30.0) : Routage côté client
-- **react-redux** (v9.2.0) : Gestion d'état global
-- **redux** (v5.0.1) : Gestion d'état prédictible
-- **redux-thunk** (v3.1.0) : Middleware pour actions asynchrones
-- **redux-persist** (v6.0.0) : Persistance de l'état Redux
-- **axios** (v1.8.4) : Client HTTP pour les requêtes API
-- **bootstrap** (v5.3.3) & **react-bootstrap** (v2.10.9) : Framework CSS
-- **socket.io-client** (v4.8.1) : Client pour la communication en temps réel
-- **date-fns** (v4.1.0) : Manipulation de dates
-- **dompurify** (v3.2.5) : Prévention des attaques XSS
-- **react-icons** (v4.12.0) : Bibliothèque d'icônes
+```
+organiz-asso/
+├── server/           # Backend Express
+│   ├── controllers/  # Logique métier
+│   ├── models/       # Modèles MongoDB
+│   ├── routes/       # Routes API
+│   └── server.js     # Point d'entrée
+├── client/          # Frontend React
+│   ├── public/       # Fichiers statiques
+│   └── src/          # Code source React
+└── package.json      # Dépendances
+```
 
-### Outils de développement
-- **nodemon** (v3.0.3) : Redémarrage automatique du serveur
-- **concurrently** (v8.2.2) : Exécution de commandes en parallèle
+## Sécurité
 
-## Scripts disponibles
+- Authentification JWT
+- Hachage des mots de passe avec bcrypt
+- Protection contre les injections
+- Validation des données
+- CORS configuré
 
-- `npm run start` : Démarre le serveur backend
-- `npm run server` : Démarre le serveur backend avec nodemon (redémarrage automatique)
-- `npm run client` : Démarre le client React
-- `npm run dev` : Démarre le backend et le frontend en parallèle
-- `npm run seed` : Remplit la base de données avec des données de test
-- `npm run install-all` : Installe les dépendances du backend et du frontend
+## Fonctionnalités à Venir
 
-## Gestion des permissions
-
-- **Administrateurs** : Peuvent créer, modifier et supprimer tous les forums et messages
-- **Utilisateurs** : Peuvent créer des forums publics, participer aux discussions et supprimer leurs propres contenus
-- **Visiteurs** : Accès limité à la consultation des forums publics
-
-## Fonctionnalités détaillées
-
-### Système de forums
-- Création de forums publics ou privés
-- Catégorisation des forums
-- Fil de discussion avec réponses imbriquées
-- Options de modération pour les administrateurs
-
-### Recherche avancée
-- Interface à onglets inspirée de LinkedIn
-- Recherche de messages par mots-clés
-- Recherche d'utilisateurs
-- Recherche de forums par titre ou description
-
-### Profils utilisateurs
-- Informations personnelles
-- Historique des activités
-- Gestion des préférences
-- Avatar personnalisable
-
-## Compatibilité navigateurs
-
-- Chrome (dernières versions)
-- Firefox (dernières versions)
-- Safari (dernières versions)
-- Edge (dernières versions)
+- [ ] Chat instantané (la collection chatmessages existe mais n'est pas encore implémentée)
 
 ## Licence
 
-Ce projet est sous licence MIT.
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
 ## Auteurs
 
-Développé dans le cadre du cours 3IN017 - Technologies du Web
+- Tebti Anis - 
+
